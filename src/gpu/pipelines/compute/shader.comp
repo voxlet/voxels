@@ -1,0 +1,19 @@
+#version 450
+
+layout(std140, set = 0, binding = 0) buffer PixelBuffer {
+  vec4 pixels[];
+} pixelBuffer;
+
+layout(set = 0, binding = 1) uniform ScreenDimension {
+  vec2 resolution;
+};
+
+void main() {
+  const uint pixelIndex = gl_GlobalInvocationID.y * uint(resolution.x) + gl_GlobalInvocationID.x;
+  const vec4 color = vec4(
+    gl_GlobalInvocationID.xy / resolution,
+    1.0,
+    1.0
+  );
+  pixelBuffer.pixels[pixelIndex] = color;
+}
