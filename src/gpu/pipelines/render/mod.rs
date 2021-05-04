@@ -5,37 +5,43 @@ pub struct Render {
 
 impl Render {
     pub fn new(device: &wgpu::Device, swap_chain_desc: &wgpu::SwapChainDescriptor) -> Self {
-        let vs_src = include_str!("blit.vert");
-        let fs_src = include_str!("blit.frag");
-        let mut compiler = shaderc::Compiler::new().unwrap();
-        let vs_spirv = compiler
-            .compile_into_spirv(
-                vs_src,
-                shaderc::ShaderKind::Vertex,
-                "blit.vert",
-                "main",
-                None,
-            )
-            .unwrap();
-        let fs_spirv = compiler
-            .compile_into_spirv(
-                fs_src,
-                shaderc::ShaderKind::Fragment,
-                "blit.frag",
-                "main",
-                None,
-            )
-            .unwrap();
-        let vs_data = wgpu::util::make_spirv(vs_spirv.as_binary_u8());
-        let fs_data = wgpu::util::make_spirv(fs_spirv.as_binary_u8());
-        let vs_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
-            label: Some("Blit Vertex Shader"),
-            source: vs_data,
-            flags: wgpu::ShaderFlags::default(),
-        });
-        let fs_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
-            label: Some("Blit Fragment Shader"),
-            source: fs_data,
+        // let vs_src = include_str!("blit.vert");
+        // let fs_src = include_str!("blit.frag");
+        // let mut compiler = shaderc::Compiler::new().unwrap();
+        // let vs_spirv = compiler
+        //     .compile_into_spirv(
+        //         vs_src,
+        //         shaderc::ShaderKind::Vertex,
+        //         "blit.vert",
+        //         "main",
+        //         None,
+        //     )
+        //     .unwrap();
+        // let fs_spirv = compiler
+        //     .compile_into_spirv(
+        //         fs_src,
+        //         shaderc::ShaderKind::Fragment,
+        //         "blit.frag",
+        //         "main",
+        //         None,
+        //     )
+        //     .unwrap();
+        // let vs_data = wgpu::util::make_spirv(vs_spirv.as_binary_u8());
+        // let fs_data = wgpu::util::make_spirv(fs_spirv.as_binary_u8());
+        // let vs_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
+        //     label: Some("Blit Vertex Shader"),
+        //     source: vs_data,
+        //     flags: wgpu::ShaderFlags::default(),
+        // });
+        // let fs_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
+        //     label: Some("Blit Fragment Shader"),
+        //     source: fs_data,
+        //     flags: wgpu::ShaderFlags::default(),
+        // });
+
+        let module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
+            label: Some("Blit Shader"),
+            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(include_str!("blit.wgsl"))),
             flags: wgpu::ShaderFlags::default(),
         });
 
@@ -75,13 +81,17 @@ impl Render {
             label: Some("Render Pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &vs_module,
-                entry_point: "main",
+                module: &module,
+                entry_point: "vert_main",
+                // module: &vs_module,
+                // entry_point: "main",
                 buffers: &[],
             },
             fragment: Some(wgpu::FragmentState {
-                module: &fs_module,
-                entry_point: "main",
+                // module: &fs_module,
+                // entry_point: "main",
+                module: &module,
+                entry_point: "frag_main",
                 targets: &[wgpu::ColorTargetState {
                     format: swap_chain_desc.format,
                     blend: None,
