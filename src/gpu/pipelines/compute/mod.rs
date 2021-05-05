@@ -1,3 +1,4 @@
+use crate::gpu::render_resolution::RenderResolution;
 use std::borrow::Cow;
 
 pub struct Compute {
@@ -7,23 +8,9 @@ pub struct Compute {
 
 impl Compute {
     pub fn new(device: &wgpu::Device) -> Self {
-        // let compute_shader_text = include_str!("shader.comp");
-        // let mut shader_compiler = shaderc::Compiler::new().unwrap();
-        // let compute_shader_bin = shader_compiler
-        //     .compile_into_spirv(
-        //         compute_shader_text,
-        //         shaderc::ShaderKind::Compute,
-        //         "shader.comp",
-        //         "main",
-        //         None,
-        //     )
-        //     .unwrap();
-        // let compute_shader_source = wgpu::util::make_spirv(compute_shader_bin.as_binary_u8());
-
         let compute_shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("Compute Shader"),
             flags: wgpu::ShaderFlags::default(),
-            // source: compute_shader_source,
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("compute.wgsl"))),
         });
 
@@ -76,8 +63,7 @@ impl Compute {
         &self,
         device: &wgpu::Device,
         pixel_buffer: &wgpu::Buffer,
-        resolution_uniform: &wgpu::Buffer,
-        size: &winit::dpi::PhysicalSize<u32>,
+        resolution: &RenderResolution,
     ) -> wgpu::CommandEncoder {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Compute Encoder"),
@@ -93,7 +79,7 @@ impl Compute {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: resolution_uniform.as_entire_binding(),
+                    resource: resolution.uniform.as_entire_binding(),
                 },
             ],
         });
@@ -103,7 +89,7 @@ impl Compute {
             });
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch(size.width, size.height, 1);
+            pass.dispatch(resolution.width, resolution.height, 1);
         }
         encoder
     }
