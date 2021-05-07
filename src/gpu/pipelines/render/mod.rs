@@ -1,4 +1,4 @@
-use crate::gpu::RenderResolution;
+use crate::gpu::state;
 
 pub struct Render {
     bind_group_layout: wgpu::BindGroupLayout,
@@ -16,21 +16,12 @@ impl Render {
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("Render Bind Group Layout"),
             entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
+                state::bind_group_layout_entry(0, wgpu::ShaderStage::FRAGMENT),
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStage::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
                         has_dynamic_offset: false,
                         min_binding_size: None,
                     },
@@ -89,9 +80,9 @@ impl Render {
     pub fn render(
         &self,
         device: &wgpu::Device,
+        state: &state::State,
         frame: &wgpu::SwapChainTexture,
         pixel_buffer: &wgpu::Buffer,
-        resolution: &RenderResolution,
     ) -> wgpu::CommandEncoder {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
@@ -101,13 +92,10 @@ impl Render {
             label: Some("Render Bind Group"),
             layout: &self.bind_group_layout,
             entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: pixel_buffer.as_entire_binding(),
-                },
+                state.bind_group_entry(0),
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: resolution.uniform.as_entire_binding(),
+                    resource: pixel_buffer.as_entire_binding(),
                 },
             ],
         });

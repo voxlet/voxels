@@ -1,5 +1,7 @@
-use crate::gpu::render_resolution::RenderResolution;
+use crate::gpu::state;
 use std::borrow::Cow;
+
+const WORKGROUP_SIZE: u32 = 32;
 
 pub struct Compute {
     pipeline: wgpu::ComputePipeline,
@@ -17,21 +19,12 @@ impl Compute {
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("Compute Bind Group Layout"),
             entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStage::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
+                state::bind_group_layout_entry(0, wgpu::ShaderStage::COMPUTE),
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStage::COMPUTE,
                     ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
                         has_dynamic_offset: false,
                         min_binding_size: None,
                     },
@@ -62,8 +55,8 @@ impl Compute {
     pub fn compute(
         &self,
         device: &wgpu::Device,
+        state: &state::State,
         pixel_buffer: &wgpu::Buffer,
-        resolution: &RenderResolution,
     ) -> wgpu::CommandEncoder {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Compute Encoder"),
@@ -73,13 +66,10 @@ impl Compute {
             label: Some("Compute Bind Group"),
             layout: &self.bind_group_layout,
             entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: pixel_buffer.as_entire_binding(),
-                },
+                state.bind_group_entry(0),
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: resolution.uniform.as_entire_binding(),
+                    resource: pixel_buffer.as_entire_binding(),
                 },
             ],
         });
@@ -89,7 +79,11 @@ impl Compute {
             });
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch(resolution.width, resolution.height, 1);
+            pass.dispatch(
+                state.render_width / WORKGROUP_SIZE,
+                state.render_height / WORKGROUP_SIZE,
+                1,
+            );
         }
         encoder
     }

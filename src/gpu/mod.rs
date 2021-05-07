@@ -1,7 +1,7 @@
 mod pipelines;
-mod render_resolution;
+mod state;
 
-use render_resolution::RenderResolution;
+use state::State;
 use std::mem::size_of;
 
 pub use pipelines::Pipelines;
@@ -10,7 +10,7 @@ pub struct Gpu {
     surface: wgpu::Surface,
     device: wgpu::Device,
     queue: wgpu::Queue,
-    resolution: RenderResolution,
+    state: State,
     pixel_buffer_desc: wgpu::BufferDescriptor<'static>,
     pixel_buffer: wgpu::Buffer,
     swap_chain_desc: wgpu::SwapChainDescriptor,
@@ -50,7 +50,7 @@ impl Gpu {
             .unwrap();
 
         let winit::dpi::PhysicalSize { width, height } = window.inner_size();
-        let resolution = RenderResolution::from(&device, width, height);
+        let state = State::from(&device, width, height);
 
         let pixel_buffer_desc = wgpu::BufferDescriptor {
             label: Some("Compute Pixel Buffer"),
@@ -63,8 +63,8 @@ impl Gpu {
         let swap_chain_desc = wgpu::SwapChainDescriptor {
             usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
             format: adapter.get_swap_chain_preferred_format(&surface).unwrap(),
-            width: resolution.width,
-            height: resolution.height,
+            width: state.render_width,
+            height: state.render_height,
             present_mode: wgpu::PresentMode::Fifo,
         };
         let swap_chain = device.create_swap_chain(&surface, &swap_chain_desc);
@@ -75,7 +75,7 @@ impl Gpu {
             surface,
             device,
             queue,
-            resolution,
+            state,
             pixel_buffer_desc,
             pixel_buffer,
             swap_chain_desc,
@@ -85,7 +85,7 @@ impl Gpu {
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
-        self.resolution = RenderResolution::from(&self.device, width, height);
+        self.state = State::from(&self.device, width, height);
 
         self.pixel_buffer_desc.size = pixel_buffer_size(width, height);
         self.pixel_buffer = self.device.create_buffer(&self.pixel_buffer_desc);
@@ -103,16 +103,14 @@ impl Gpu {
         let compute_encoder =
             self.pipelines
                 .compute
-                .compute(&self.device, &self.pixel_buffer, &self.resolution);
+                .compute(&self.device, &self.state, &self.pixel_buffer);
         // submit will accept anything that implements IntoIter
         self.queue.submit(std::iter::once(compute_encoder.finish()));
 
-        let render_encoder = self.pipelines.render.render(
-            &self.device,
-            &frame,
-            &self.pixel_buffer,
-            &self.resolution,
-        );
+        let render_encoder =
+            self.pipelines
+                .render
+                .render(&self.device, &self.state, &frame, &self.pixel_buffer);
         self.queue.submit(std::iter::once(render_encoder.finish()));
 
         Ok(())

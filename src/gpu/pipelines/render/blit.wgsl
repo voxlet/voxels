@@ -1,18 +1,18 @@
 [[block]]
+struct State {
+  resolution: vec2<f32>;
+};
+
+[[group(0), binding(0)]]
+var<uniform> state: State;
+
+[[block]]
 struct PixelBuffer {
   pixels: array<vec4<f32>>;
 };
 
-[[group(0), binding(0)]]
-var<storage> pixelBuffer: [[access(read)]] PixelBuffer;
-
-[[block]]
-struct Screen {
-  res: vec2<f32>;
-};
-
 [[group(0), binding(1)]]
-var<uniform> screen: Screen;
+var<storage> pixelBuffer: [[access(read)]] PixelBuffer;
 
 struct Vertex {
   [[builtin(position)]] pos: vec4<f32>;
@@ -34,7 +34,7 @@ fn vert_main(
 
 [[stage(fragment)]]
 fn frag_main(in: Vertex) -> [[location(0)]] vec4<f32> {
-  let buffer_coord = floor(in.uv * screen.res);
-  let pixel_index = u32(buffer_coord.y * screen.res.x + buffer_coord.x);
+  let buffer_coord = floor(in.uv * state.resolution);
+  let pixel_index = u32(buffer_coord.y * state.resolution.x + buffer_coord.x);
   return pixelBuffer.pixels[pixel_index];
 }
