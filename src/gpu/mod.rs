@@ -2,7 +2,7 @@ mod pipelines;
 mod state;
 
 use state::State;
-use std::mem::size_of;
+use std::{mem::size_of, num::NonZeroU32};
 
 pub use pipelines::Pipelines;
 
@@ -11,11 +11,84 @@ pub struct Gpu {
     device: wgpu::Device,
     queue: wgpu::Queue,
     state: State,
+    voxel_view: wgpu::TextureView,
+    voxel_sampler: wgpu::Sampler,
     pixel_buffer_desc: wgpu::BufferDescriptor<'static>,
     pixel_buffer: wgpu::Buffer,
     swap_chain_desc: wgpu::SwapChainDescriptor,
     swap_chain: wgpu::SwapChain,
     pipelines: Pipelines,
+}
+
+fn create_voxel_texture(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+) -> (wgpu::TextureView, wgpu::Sampler) {
+    const SIZE: usize = 256;
+    let size = wgpu::Extent3d {
+        width: SIZE as u32,
+        height: SIZE as u32,
+        depth_or_array_layers: SIZE as u32,
+    };
+
+    let mut data = vec![[0u8, 0, 0, 0]; SIZE * SIZE * SIZE];
+    let y_offs = SIZE;
+    let z_offs = SIZE * SIZE;
+    let range = (32..SIZE - 32).step_by(8);
+    for z in range.clone() {
+        for y in range.clone() {
+            for x in range.clone() {
+                data[x + y * y_offs + z * z_offs] = [z as u8, y as u8, x as u8, 255];
+            }
+        }
+    }
+    let range = (36..SIZE - 36).step_by(8);
+    for z in range.clone() {
+        for y in range.clone() {
+            for x in range.clone() {
+                data[x + y * y_offs + z * z_offs] = [z as u8, y as u8, x as u8, 255];
+            }
+        }
+    }
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("Voxel Texture"),
+        size,
+        mip_level_count: 3,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D3,
+        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::COPY_DST,
+    });
+
+    let view = texture.create_view(&wgpu::TextureViewDescriptor {
+        label: Some("Voxel View"),
+        ..wgpu::TextureViewDescriptor::default()
+    });
+
+    queue.write_texture(
+        wgpu::ImageCopyTexture {
+            texture: &texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+        },
+        bytemuck::cast_slice(&data),
+        wgpu::ImageDataLayout {
+            offset: 0,
+            bytes_per_row: NonZeroU32::new(size_of::<u8>() as u32 * 4 * SIZE as u32),
+            rows_per_image: NonZeroU32::new(SIZE as u32),
+        },
+        size,
+    );
+
+    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("Voxel Sampler"),
+        mag_filter: wgpu::FilterMode::Nearest,
+        min_filter: wgpu::FilterMode::Linear,
+        mipmap_filter: wgpu::FilterMode::Nearest,
+        ..wgpu::SamplerDescriptor::default()
+    });
+
+    (view, sampler)
 }
 
 fn pixel_buffer_size(width: u32, height: u32) -> u64 {
@@ -52,6 +125,8 @@ impl Gpu {
         let winit::dpi::PhysicalSize { width, height } = window.inner_size();
         let state = State::from(&device, width, height);
 
+        let (voxel_view, voxel_sampler) = create_voxel_texture(&device, &queue);
+
         let pixel_buffer_desc = wgpu::BufferDescriptor {
             label: Some("Compute Pixel Buffer"),
             size: pixel_buffer_size(width, height),
@@ -76,6 +151,8 @@ impl Gpu {
             device,
             queue,
             state,
+            voxel_view,
+            voxel_sampler,
             pixel_buffer_desc,
             pixel_buffer,
             swap_chain_desc,
@@ -85,7 +162,8 @@ impl Gpu {
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
-        self.state = State::from(&self.device, width, height);
+        self.state
+            .update(&self.queue, Some(width), Some(height), None);
 
         self.pixel_buffer_desc.size = pixel_buffer_size(width, height);
         self.pixel_buffer = self.device.create_buffer(&self.pixel_buffer_desc);
@@ -97,13 +175,27 @@ impl Gpu {
             .create_swap_chain(&self.surface, &self.swap_chain_desc);
     }
 
-    pub fn render(&self) -> Result<(), wgpu::SwapChainError> {
+    pub fn update(&mut self, start_time: std::time::Instant, _dt: std::time::Duration) {
+        let t = (std::time::Instant::now() - start_time).as_secs_f32() * 0.2;
+        let camera_position = [
+            f32::sin(t) * 0.25 + 0.5,
+            f32::sin(t * 0.9) * 0.25 + 0.5,
+            f32::sin(t * 1.5) * 0.25 + 0.2,
+        ];
+        self.state
+            .update(&self.queue, None, None, Some(camera_position));
+    }
+
+    pub fn render(&mut self) -> Result<(), wgpu::SwapChainError> {
         let frame = self.swap_chain.get_current_frame()?.output;
 
-        let compute_encoder =
-            self.pipelines
-                .compute
-                .compute(&self.device, &self.state, &self.pixel_buffer);
+        let compute_encoder = self.pipelines.compute.compute(
+            &self.device,
+            &self.state,
+            &self.pixel_buffer,
+            &self.voxel_view,
+            &self.voxel_sampler,
+        );
         // submit will accept anything that implements IntoIter
         self.queue.submit(std::iter::once(compute_encoder.finish()));
 
