@@ -1,5 +1,6 @@
 [[block]]
 struct State {
+  camera_rotation: mat3x3<f32>;
   camera_position: vec3<f32>;
   resolution: vec2<f32>;
 };
@@ -52,7 +53,7 @@ fn ray_for(gid: vec3<u32>) -> Ray {
   ray.origin = state.camera_position;
   var xy: vec2<f32> = vec2<f32>(gid.xy) / state.resolution * 2.0 - vec2<f32>(1.0, 1.0);
   xy.x = xy.x * state.resolution.x / state.resolution.y;
-  ray.direction = normalize(vec3<f32>(xy, 1.0));
+  ray.direction = normalize(state.camera_rotation * vec3<f32>(xy, 1.0));
   return ray;
 }
 
