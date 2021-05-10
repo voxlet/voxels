@@ -16,3 +16,4 @@ futures = "0.3"
 bytemuck = { version = "1.5", features = ["derive"] }
 glam = "0.14"
 simdnoise = "3"
+rayon = "1.5"

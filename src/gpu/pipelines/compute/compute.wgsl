@@ -28,8 +28,8 @@ struct Ray {
 };
 
 fn trace_ray(ray: Ray) -> vec4<f32> {
-  let voxel_size = 1.0 / 256.0;
-  let max_ray_distance = 1.0;
+  let voxel_size = 1.0 / 512.0;
+  let max_ray_distance = 1.4143;
 
   var ray_distance: f32 = 0.00001;
   var color: vec4<f32> = vec4<f32>(0.0, 0.0, 0.0, 0.0);
