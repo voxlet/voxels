@@ -10,14 +10,14 @@ pub use pipelines::Pipelines;
 
 pub struct Gpu {
     surface: wgpu::Surface,
-    device: wgpu::Device,
-    queue: wgpu::Queue,
+    pub device: wgpu::Device,
+    pub queue: wgpu::Queue,
     state: State,
     voxel_view: wgpu::TextureView,
     voxel_sampler: wgpu::Sampler,
     pixel_buffer_desc: wgpu::BufferDescriptor<'static>,
     pixel_buffer: wgpu::Buffer,
-    swap_chain_desc: wgpu::SwapChainDescriptor,
+    pub swap_chain_desc: wgpu::SwapChainDescriptor,
     swap_chain: wgpu::SwapChain,
     pipelines: Pipelines,
 }
@@ -167,7 +167,7 @@ impl Gpu {
         let surface = unsafe { instance.create_surface(window) };
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::default(),
+                power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: Some(&surface),
             })
             .await
@@ -203,7 +203,7 @@ impl Gpu {
             format: adapter.get_swap_chain_preferred_format(&surface).unwrap(),
             width: state.render_width,
             height: state.render_height,
-            present_mode: wgpu::PresentMode::Fifo,
+            present_mode: wgpu::PresentMode::Mailbox,
         };
         let swap_chain = device.create_swap_chain(&surface, &swap_chain_desc);
 
@@ -242,9 +242,11 @@ impl Gpu {
         self.state.update(&self.queue, None, None, Some(camera));
     }
 
-    pub fn render(&mut self) -> Result<(), wgpu::SwapChainError> {
-        let frame = self.swap_chain.get_current_frame()?.output;
+    pub fn get_current_frame(&self) -> Result<wgpu::SwapChainTexture, wgpu::SwapChainError> {
+        Ok(self.swap_chain.get_current_frame()?.output)
+    }
 
+    pub fn render(&mut self, frame: &wgpu::SwapChainTexture) {
         let compute_encoder = self.pipelines.compute.compute(
             &self.device,
             &self.state,
@@ -258,9 +260,7 @@ impl Gpu {
         let render_encoder =
             self.pipelines
                 .render
-                .render(&self.device, &self.state, &frame, &self.pixel_buffer);
+                .render(&self.device, &self.state, frame, &self.pixel_buffer);
         self.queue.submit(std::iter::once(render_encoder.finish()));
-
-        Ok(())
     }
 }

@@ -11,11 +11,11 @@ enum CameraMotion {
 }
 
 pub struct Camera {
-    yaw: f32,
-    pitch: f32,
-    mouse_sensitivity: f32,
+    pub yaw: f32,
+    pub pitch: f32,
+    pub mouse_sensitivity: f32,
     active_motions: HashSet<CameraMotion>,
-    max_velocity: f32,
+    pub max_velocity: f32,
     pub position: glam::Vec3,
     pub rotation: glam::Mat3,
 }

@@ -1,7 +1,7 @@
 use crate::gpu::state;
 use std::borrow::Cow;
 
-const WORKGROUP_SIZE: u32 = 32;
+const WORKGROUP_SIZE: u32 = 30;
 
 pub struct Compute {
     pipeline: wgpu::ComputePipeline,
