@@ -19,8 +19,17 @@ pub fn camera(ui: &mut Ui, state: &mut State) {
     });
 }
 
+pub fn frame_time(ui: &mut Ui, state: &mut State) {
+    ui.horizontal(|ui| {
+        ui.label("Frame Time");
+        ui.label(format!("{:.2}", state.dt.as_micros() as f32 / 1000.0));
+    });
+}
+
 pub fn ui(ctx: &CtxRef, state: &mut State) {
     egui::Window::new("Debug").show(ctx, |ui| {
         camera(ui, state);
+        ui.separator();
+        frame_time(ui, state);
     });
 }

@@ -250,7 +250,7 @@ impl Gpu {
         Ok(self.swap_chain.get_current_frame()?.output)
     }
 
-    pub fn render(&mut self, frame: &wgpu::SwapChainTexture) {
+    pub fn render(&mut self, frame: &wgpu::SwapChainTexture) -> wgpu::CommandEncoder {
         let compute_encoder = self.pipelines.compute.compute(
             &self.device,
             &self.state,
@@ -261,10 +261,8 @@ impl Gpu {
         // submit will accept anything that implements IntoIter
         self.queue.submit(std::iter::once(compute_encoder.finish()));
 
-        let render_encoder =
-            self.pipelines
-                .render
-                .render(&self.device, &self.state, frame, &self.pixel_buffer);
-        self.queue.submit(std::iter::once(render_encoder.finish()));
+        self.pipelines
+            .render
+            .render(&self.device, &self.state, frame, &self.pixel_buffer)
     }
 }

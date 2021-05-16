@@ -9,6 +9,7 @@ pub struct State {
     pub scale_factor: f64,
     pub start_time: std::time::Instant,
     pub last_update_time: std::time::Instant,
+    pub dt: std::time::Duration,
     pub camera: camera::Camera,
 }
 
@@ -29,6 +30,7 @@ impl State {
             start_time,
             last_update_time: start_time,
             camera,
+            dt: Duration::new(0, 0),
         }
     }
 
@@ -43,13 +45,14 @@ impl State {
         };
     }
 
-    pub fn update(&mut self) -> Duration {
+    pub fn update(&mut self) -> std::time::Duration {
         let now = std::time::Instant::now();
         let dt = now - self.last_update_time;
         self.last_update_time = now;
 
         self.camera.update(dt);
 
+        self.dt = dt;
         dt
     }
 }
