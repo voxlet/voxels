@@ -1,5 +1,4 @@
-use crate::gpu::state;
-use std::borrow::Cow;
+use crate::gpu::{shader::Shaders, state};
 
 const WORKGROUP_SIZE: u32 = 30;
 
@@ -9,11 +8,11 @@ pub struct Compute {
 }
 
 impl Compute {
-    pub fn new(device: &wgpu::Device) -> Self {
+    pub fn new(device: &wgpu::Device, shaders: &Shaders) -> Self {
         let compute_shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("Compute Shader"),
             flags: wgpu::ShaderFlags::default(),
-            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("compute.wgsl"))),
+            source: shaders.source("compute.wgsl"),
         });
 
         let pixel_buffer_layout_entry = wgpu::BindGroupLayoutEntry {

@@ -1,4 +1,4 @@
-use crate::gpu::state;
+use crate::gpu::{shader::Shaders, state};
 
 pub struct Render {
     bind_group_layout: wgpu::BindGroupLayout,
@@ -6,10 +6,14 @@ pub struct Render {
 }
 
 impl Render {
-    pub fn new(device: &wgpu::Device, swap_chain_desc: &wgpu::SwapChainDescriptor) -> Self {
+    pub fn new(
+        device: &wgpu::Device,
+        shaders: &Shaders,
+        swap_chain_desc: &wgpu::SwapChainDescriptor,
+    ) -> Self {
         let module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("Blit Shader"),
-            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(include_str!("blit.wgsl"))),
+            source: shaders.source("blit.wgsl"),
             flags: wgpu::ShaderFlags::default(),
         });
 
