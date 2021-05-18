@@ -81,7 +81,7 @@ impl Ui {
     pub fn render(
         &mut self,
         frame: &SwapChainTexture,
-        gpu: &Gpu,
+        gpu: &mut Gpu,
         state: &mut State,
         render_encoder: &mut wgpu::CommandEncoder,
     ) {
@@ -107,7 +107,7 @@ impl Ui {
 
         let ctx = self.platform.context();
 
-        window::ui(&ctx, state);
+        window::ui(&ctx, state, gpu);
 
         ctx.request_repaint();
 
