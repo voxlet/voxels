@@ -1,0 +1,7 @@
+[env]
+SHADER_SOURCES = { glob = "shaders/*.wgsl" }
+
+[tasks.validate-shaders]
+command = "cargo"
+args = ["run", "--bin", "validate_shaders", "${SHADER_SOURCES}"]
+watch = { watch = ["./shaders"] }

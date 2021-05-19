@@ -1,5 +1,5 @@
 mod pipelines;
-mod shader;
+pub mod shader;
 mod state;
 mod voxel;
 

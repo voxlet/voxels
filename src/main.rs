@@ -1,7 +1,4 @@
-mod app;
-mod gpu;
-mod state;
-mod ui;
+use voxels::app;
 
 fn main() {
     tracing_subscriber::fmt::init();

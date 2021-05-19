@@ -35,7 +35,7 @@ fn safe_join(left: &Path, right: &Path) -> PathBuf {
     path
 }
 
-fn load(path: &Path, included_paths: &mut HashSet<PathBuf>) -> String {
+fn expand_inclusions(path: &Path, included_paths: &mut HashSet<PathBuf>) -> String {
     let source = read_to_string(path).unwrap();
     include_pattern()
         .replace_all(&source, |caps: &Captures| {
@@ -49,10 +49,14 @@ fn load(path: &Path, included_paths: &mut HashSet<PathBuf>) -> String {
             }
             included_paths.insert(included_path.clone());
 
-            let included_source = load(&included_path, included_paths);
+            let included_source = expand_inclusions(&included_path, included_paths);
             included_source
         })
         .to_string()
+}
+
+pub fn load(path: &Path) -> String {
+    expand_inclusions(path, &mut HashSet::new())
 }
 
 impl Shaders {
@@ -64,7 +68,7 @@ impl Shaders {
 
     pub fn source(&self, path: &str) -> wgpu::ShaderSource {
         let full_path = Path::new(&self.base_path).join(path);
-        wgpu::ShaderSource::Wgsl(Cow::Owned(load(&full_path, &mut HashSet::new())))
+        wgpu::ShaderSource::Wgsl(Cow::Owned(load(&full_path)))
     }
 }
 
