@@ -98,7 +98,7 @@ fn trace_ray(ray: Ray) -> vec4<f32> {
             box.center,
             0.0
         );
-        if (color.a > 0.5 || count > 4096 || exit.distance > max_ray_distance) {
+        if (color.a > 0.5 || count > 2048 || exit.distance > max_ray_distance) {
             color = color * (1.0 + dot(exit.normal, vec3<f32>(1.0, 2.0, 1.0)) * -0.3);
             color = select(vec4<f32>(1.0,0.0,0.0,1.0), color, count > 1024);
             break;

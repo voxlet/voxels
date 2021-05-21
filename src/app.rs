@@ -38,6 +38,7 @@ pub async fn run() {
     let event_loop: EventLoop<ui::AppEvent> = EventLoop::with_user_event();
     let window = WindowBuilder::new()
         .with_inner_size(PhysicalSize::new(2560, 1440))
+        .with_always_on_top(true)
         .build(&event_loop)
         .unwrap();
 

@@ -26,6 +26,7 @@
     "shaderc",
     "simdnoise",
     "spirv",
+    "uncaptured",
     "voxel",
     "voxels",
     "wgpu",

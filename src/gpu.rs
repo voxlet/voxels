@@ -4,7 +4,10 @@ mod state;
 mod voxel;
 
 use state::State;
-use std::mem::size_of;
+use std::{
+    mem::size_of,
+    sync::{Arc, Mutex},
+};
 
 use crate::state::camera::Camera;
 pub use pipelines::Pipelines;
@@ -13,7 +16,7 @@ use shader::Shaders;
 
 pub struct Gpu {
     surface: wgpu::Surface,
-    pub device: wgpu::Device,
+    pub device: Arc<wgpu::Device>,
     pub queue: wgpu::Queue,
     pub state: State,
     voxel_view: wgpu::TextureView,
@@ -56,6 +59,8 @@ impl Gpu {
             .await
             .unwrap();
 
+        device.on_uncaptured_error(|error| tracing::error!(?error));
+
         let winit::dpi::PhysicalSize { width, height } = window.inner_size();
         let state = State::from(&device, width, height, camera);
 
@@ -79,8 +84,9 @@ impl Gpu {
         };
         let swap_chain = device.create_swap_chain(&surface, &swap_chain_desc);
 
-        let shaders = Shaders::new("shaders");
-        let pipelines = Pipelines::new(&device, &shaders, &swap_chain_desc);
+        let shaders = Arc::new(Mutex::new(Shaders::new("shaders")));
+        let device = Arc::new(device);
+        let pipelines = Pipelines::new(device.clone(), shaders, &swap_chain_desc);
 
         Gpu {
             surface,
@@ -148,7 +154,7 @@ impl Gpu {
     }
 
     pub fn render(&mut self, frame: &wgpu::SwapChainTexture) -> wgpu::CommandEncoder {
-        let compute_encoder = self.pipelines.compute.compute(
+        let compute_encoder = self.pipelines.compute.lock().unwrap().compute(
             &self.device,
             &self.state,
             &self.pixel_buffer,

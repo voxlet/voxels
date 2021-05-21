@@ -7,8 +7,9 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     for shader in args[1].split(";") {
         println!("\n{}", shader);
-        let source = voxels::gpu::shader::load(path::Path::new(shader));
-        match naga::front::wgsl::parse_str(&source) {
+        let voxels::gpu::shader::load::Source { code, .. } =
+            voxels::gpu::shader::load::load(path::Path::new(shader));
+        match naga::front::wgsl::parse_str(&code) {
             Err(e) => e.emit_to_stderr(),
             Ok(module) => {
                 if let Err(e) = validator.validate(&module) {
