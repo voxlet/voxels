@@ -64,7 +64,7 @@ fn caves(size: usize) -> Vec<[u8; 4]> {
             for x in 0..size {
                 let i = x + y * y_offs + *z * z_offs;
                 let n = noise[i];
-                if n > 0.6 {
+                if n > 0.75 {
                     (*slice)[x + y * y_offs] = [
                         to_color(*z, size),
                         to_color(y, size),
@@ -127,6 +127,9 @@ pub fn create_texture(
 
     let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("Voxel Sampler"),
+        address_mode_u: wgpu::AddressMode::MirrorRepeat,
+        address_mode_v: wgpu::AddressMode::MirrorRepeat,
+        address_mode_w: wgpu::AddressMode::MirrorRepeat,
         mag_filter: wgpu::FilterMode::Nearest,
         min_filter: wgpu::FilterMode::Linear,
         mipmap_filter: wgpu::FilterMode::Nearest,
