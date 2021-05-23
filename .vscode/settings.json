@@ -19,6 +19,7 @@
     "hidpi",
     "imgui",
     "mipmap",
+    "mipmaps",
     "multisample",
     "multisampled",
     "oversample",

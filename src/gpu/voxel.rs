@@ -2,6 +2,8 @@ use std::{mem::size_of, num::NonZeroU32};
 
 use rayon::prelude::*;
 
+use super::{pipelines::mipmap, shader::Shaders};
+
 #[allow(dead_code)]
 fn cubic_lattice(size: usize) -> Vec<[u8; 4]> {
     let mut data = vec![[0u8, 0, 0, 0]; size * size * size];
@@ -26,7 +28,7 @@ fn caves(size: usize) -> Vec<[u8; 4]> {
     tracing::info!("generating cave noise");
     let noise = simdnoise::NoiseBuilder::gradient_3d(size, size, size)
         .with_seed(42)
-        .with_freq(10.0 / size as f32)
+        .with_freq(8.0 / size as f32)
         .generate_scaled(0.0, 1.0);
 
     tracing::info!("allocating caves");
@@ -82,6 +84,7 @@ fn caves(size: usize) -> Vec<[u8; 4]> {
 pub fn create_texture(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
+    shaders: &mut Shaders,
     voxel_size: f32,
 ) -> (wgpu::TextureView, wgpu::Sampler) {
     let size = (1.0 / voxel_size).ceil() as usize;
@@ -95,15 +98,18 @@ pub fn create_texture(
         depth_or_array_layers: size as u32,
     };
 
-    let texture = device.create_texture(&wgpu::TextureDescriptor {
+    let texture_desc = wgpu::TextureDescriptor {
         label: Some("Voxel Texture"),
         size: extent,
-        mip_level_count: 3,
+        mip_level_count: (size as f32).log2() as u32,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D3,
-        format: wgpu::TextureFormat::Rgba8UnormSrgb,
-        usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::COPY_DST,
-    });
+        format: wgpu::TextureFormat::Rgba8Unorm,
+        usage: wgpu::TextureUsage::STORAGE
+            | wgpu::TextureUsage::SAMPLED
+            | wgpu::TextureUsage::COPY_DST,
+    };
+    let texture = device.create_texture(&texture_desc);
 
     let view = texture.create_view(&wgpu::TextureViewDescriptor {
         label: Some("Voxel View"),
@@ -131,10 +137,37 @@ pub fn create_texture(
         address_mode_v: wgpu::AddressMode::MirrorRepeat,
         address_mode_w: wgpu::AddressMode::MirrorRepeat,
         mag_filter: wgpu::FilterMode::Nearest,
-        min_filter: wgpu::FilterMode::Linear,
+        min_filter: wgpu::FilterMode::Nearest,
         mipmap_filter: wgpu::FilterMode::Nearest,
         ..wgpu::SamplerDescriptor::default()
     });
 
+    mipmap::generate(device, queue, shaders, &texture_desc, &texture);
+
     (view, sampler)
+}
+
+pub fn texture_layout_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStage::COMPUTE,
+        ty: wgpu::BindingType::Texture {
+            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+            view_dimension: wgpu::TextureViewDimension::D3,
+            multisampled: false,
+        },
+        count: None,
+    }
+}
+
+pub fn sampler_layout_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStage::COMPUTE,
+        ty: wgpu::BindingType::Sampler {
+            filtering: false,
+            comparison: false,
+        },
+        count: None,
+    }
 }

@@ -96,7 +96,7 @@ impl State {
             voxel_size: 1.0 / 64.0,
         };
         let uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Resolution Uniform Descriptor"),
+            label: Some("State Uniform"),
             contents: bytemuck::cast_slice(&data.bytes()),
             usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
         });

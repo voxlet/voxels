@@ -112,10 +112,10 @@ fn march_ray(ray: Ray) -> Hit {
             ),
             any(box.center > vec3<f32>(1.0))
         );
-        if (voxel.a > 0.5 ||
+        if (voxel.a > 0.0 ||
             res.steps > max_march_steps ||
             exit.distance > max_ray_distance) {
-            res.hit = voxel.a > 0.5;
+            res.hit = voxel.a > 0.0;
             res.intersection = exit;
             res.voxel = voxel;
             return res;
@@ -133,7 +133,7 @@ fn ray_from(origin: vec3<f32>, direction: vec3<f32>) -> Ray {
     return ray;
 }
 
-let light: vec3<f32> = vec3<f32>(1.0, 3.0, 1.0);
+let light: vec3<f32> = vec3<f32>(0.0, 3.0, 0.0);
 let shadow_intensity: f32 = 0.9;
 fn trace_ray(ray: Ray) -> vec4<f32> {
     let hit = march_ray(ray);
