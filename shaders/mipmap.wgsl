@@ -27,5 +27,11 @@ fn main(
     let v6 = textureLoad(input, p + vec3<i32>(1,0,1));
     let v7 = textureLoad(input, p + vec3<i32>(1,1,0));
     let v8 = textureLoad(input, p + vec3<i32>(1,1,1));
-    textureStore(output, vec3<i32>(gid), (v1+v2+v3+v4+v5+v6+v7+v8) * 0.125);
+
+    let v = v1+v2+v3+v4+v5+v6+v7+v8;
+    textureStore(
+        output,
+        vec3<i32>(gid),
+        vec4<f32>(v / v.a)
+    );
 }
