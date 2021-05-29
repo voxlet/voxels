@@ -1,0 +1,35 @@
+#include "state.wgsli"
+
+[[group(0), binding(0)]]
+var<uniform> state: State;
+
+[[block]]
+struct PixelBuffer {
+    pixels: array<vec4<f32>>;
+};
+
+[[group(0), binding(1)]]
+var<storage> pixel_buffer: [[access(write)]] PixelBuffer;
+
+[[group(0), binding(2)]]
+var voxels: texture_3d<f32>;
+
+[[group(0), binding(3)]]
+var voxel_sampler: sampler;
+
+var<private> voxel_radius: array<vec3<f32>, 10>;
+var<private> voxel_inv_radius: array<vec3<f32>, 10>;
+var<private> max_mip_level: u32;
+
+fn init_globals() {
+    max_mip_level = u32(ceil(log2(1.0 / state.voxel_size))) - 1u;
+    var i: u32 = 0u;
+    loop {
+        voxel_radius[i] = vec3<f32>(state.voxel_size * 0.5 * exp2(f32(i)));
+        voxel_inv_radius[i] = 1.0 / voxel_radius[i];
+        i = i + 1u;
+        if (i > max_mip_level) {
+            break;
+        }
+    }
+}

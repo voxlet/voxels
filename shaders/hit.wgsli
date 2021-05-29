@@ -1,0 +1,69 @@
+#include "compute_globals.wgsli"
+#include "ray.wgsli"
+#include "box.wgsli"
+
+struct Hit {
+    hit: bool;
+    intersection: Intersection;
+    steps: u32;
+    voxel: vec4<f32>;
+};
+
+fn march_ray(ray: Ray, max_steps: u32) -> Hit {
+    var res: Hit;
+    res.hit = false;
+    res.steps = 0u;
+
+    var voxel: vec4<f32> = vec4<f32>(0.0);
+
+    var box: Box = box_at(ray.origin, 0u);
+    var exit: Intersection = intersect(ray, box);
+    var exit_point: vec3<f32>;
+    var mip_level: u32 = 0u;
+    var prev_voxel: vec4<f32>;
+    var min_mip_level: u32;
+    loop {
+        // min_mip_level = max(0u, u32(log2(exit.distance)));
+        exit_point = ray.origin + ray.direction * exit.distance;
+        loop {
+            box = box_at(
+                exit_point - exit.normal * state.voxel_size * 0.5,
+                mip_level
+            );
+            prev_voxel = voxel;
+            voxel = select(
+                vec4<f32>(0.0),
+                textureSampleLevel(
+                    voxels,
+                    voxel_sampler,
+                    box.center,
+                    f32(mip_level)
+                ),
+                any(box.center > vec3<f32>(1.0))
+            );
+            if (voxel.a > 0.0) {
+                // if (mip_level <= min_mip_level) {
+                if (mip_level == 0u) {
+                    break;
+                }
+                mip_level = mip_level - 1u;
+                continue;
+            }
+            if (prev_voxel.a > 0.0 || mip_level == max_mip_level) {
+                break;
+            }
+            mip_level = mip_level + 1u;
+        }
+
+        if (voxel.a > 0.0 || res.steps > max_steps) {
+            res.hit = voxel.a > 0.0;
+            res.intersection = exit;
+            res.voxel = voxel;
+            return res;
+        }
+
+        exit = intersect(ray, box);
+        res.steps = res.steps + 1u;
+    };
+    return res;
+}

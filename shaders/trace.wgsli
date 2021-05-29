@@ -1,0 +1,30 @@
+#include "ray.wgsli"
+#include "hit.wgsli"
+
+let light: vec3<f32> = vec3<f32>(0.0, 3.0, 0.0);
+fn direct_light(hit: Hit, ray: Ray) -> f32 {
+    let hit_point = ray.direction * hit.intersection.distance + ray.origin;
+    let light_dir = light - hit_point;
+    let irradiance = dot(hit.intersection.normal, light_dir);
+    if (irradiance <= 0.0) {
+        return 0.0;
+    }
+    let direct_light_ray = ray_from(hit_point, light_dir);
+    let occlusion = march_ray(direct_light_ray, 80u);
+
+    return select(
+        0.0,
+        irradiance,
+        occlusion.hit || occlusion.intersection.distance < 2.0
+    );
+}
+
+let ambient_light_intensity: f32 = 0.05;
+fn trace_ray(ray: Ray) -> vec4<f32> {
+    let hit = march_ray(ray, 160u);
+    if (!hit.hit) {
+        return vec4<f32>(0.0, 0.0, 0.0, 0.0);
+    }
+    let irradiance = ambient_light_intensity + direct_light(hit, ray);
+    return vec4<f32>(hit.voxel.rgb * min(irradiance, 1.0), 1.0);
+}
