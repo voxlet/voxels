@@ -79,7 +79,7 @@ impl Gpu {
 
         let swap_chain_desc = wgpu::SwapChainDescriptor {
             usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
-            format: adapter.get_swap_chain_preferred_format(&surface).unwrap(),
+            format: wgpu::TextureFormat::Bgra8UnormSrgb,
             width: state.render_width,
             height: state.render_height,
             present_mode: wgpu::PresentMode::Mailbox,

@@ -9,7 +9,7 @@ struct PixelBuffer {
 };
 
 [[group(0), binding(1)]]
-var<storage> pixelBuffer: [[access(read)]] PixelBuffer;
+var<storage> pixel_buffer: [[access(read)]] PixelBuffer;
 
 struct Vertex {
     [[builtin(position)]] pos: vec4<f32>;
@@ -33,5 +33,6 @@ fn vert_main(
 fn frag_main(in: Vertex) -> [[location(0)]] vec4<f32> {
     let buffer_coord = floor(in.uv * state.resolution);
     let pixel_index = u32(buffer_coord.y * state.resolution.x + buffer_coord.x);
-    return pixelBuffer.pixels[pixel_index];
+    return pixel_buffer.pixels[pixel_index];
+    // return pow(pixel_buffer.pixels[pixel_index], vec4<f32>(vec3<f32>(1.0 / 2.2) ,1.0));
 }

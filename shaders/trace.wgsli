@@ -2,15 +2,13 @@
 #include "hit.wgsli"
 
 let light: vec3<f32> = vec3<f32>(0.0, 3.0, 0.0);
-fn direct_light(hit: Hit, ray: Ray) -> f32 {
-    let hit_point = ray.direction * hit.intersection.distance + ray.origin;
-    let light_dir = light - hit_point;
-    let irradiance = dot(hit.intersection.normal, light_dir);
+fn direct_light(point: vec3<f32>, normal: vec3<f32>) -> f32 {
+    let light_dir = light - point;
+    let irradiance = dot(normal, light_dir);
     if (irradiance <= 0.0) {
         return 0.0;
     }
-    let direct_light_ray = ray_from(hit_point, light_dir);
-    let occlusion = march_ray(direct_light_ray, 80u);
+    let occlusion = march_ray(ray_from(point, light_dir), 80u);
 
     return select(
         0.0,
@@ -19,12 +17,85 @@ fn direct_light(hit: Hit, ray: Ray) -> f32 {
     );
 }
 
-let ambient_light_intensity: f32 = 0.05;
+fn ambient_occlusion(point: vec3<f32>, normal: vec3<f32>) -> f32 {
+    let probes: array<vec3<f32>, 8> = select(
+        array<vec3<f32>, 8>(
+            ao_probes[2] + ao_probes[4],
+            ao_probes[2] + ao_probes[5],
+            ao_probes[3] + ao_probes[4],
+            ao_probes[3] + ao_probes[5],
+            ao_probes[2],
+            ao_probes[3],
+            ao_probes[4],
+            ao_probes[5],
+        ),
+        select(
+            array<vec3<f32>, 8>(
+                ao_probes[0] + ao_probes[4],
+                ao_probes[0] + ao_probes[5],
+                ao_probes[1] + ao_probes[4],
+                ao_probes[1] + ao_probes[5],
+                ao_probes[0],
+                ao_probes[1],
+                ao_probes[4],
+                ao_probes[5],
+            ),
+            array<vec3<f32>, 8>(
+                ao_probes[0] + ao_probes[2],
+                ao_probes[0] + ao_probes[3],
+                ao_probes[1] + ao_probes[2],
+                ao_probes[1] + ao_probes[3],
+                ao_probes[0],
+                ao_probes[1],
+                ao_probes[2],
+                ao_probes[3],
+            ),
+            normal.y != 0.0
+        ),
+        normal.x != 0.0
+    );
+
+    var ret: f32 = 0.0;
+    var i: u32 = 0u;
+    loop {
+        let occlusion = march_ray(ray_from(point, probes[i] + normal), 1u);
+        if (occlusion.hit) {
+
+            let d = clamp(
+                0.0,
+                1.0,
+                (voxel_radius[0].x
+                 - occlusion.intersection.distance * 0.353556781)
+                * voxel_inv_radius[0].x
+            );
+            ret = ret + select(
+                d * d * d * d,
+                0.0,
+                occlusion.hit
+                && occlusion.intersection.distance
+                   < voxel_radius[0].x * 1.41421356 * 2.0
+            );
+        }
+        i = i + 1u;
+        // if (i > 8u) {
+        if (i > 4u) {
+            break;
+        }
+    }
+    return ret * 0.2;
+}
+
+let ambient_light_intensity: f32 = 0.1;
 fn trace_ray(ray: Ray) -> vec4<f32> {
     let hit = march_ray(ray, 160u);
     if (!hit.hit) {
         return vec4<f32>(0.0, 0.0, 0.0, 0.0);
     }
-    let irradiance = ambient_light_intensity + direct_light(hit, ray);
-    return vec4<f32>(hit.voxel.rgb * min(irradiance, 1.0), 1.0);
+    let hit_point = ray.direction * hit.intersection.distance + ray.origin;
+    let irradiance =
+        (ambient_light_intensity
+         + direct_light(hit_point, hit.intersection.normal)
+           * (1.0 - ambient_light_intensity))
+        * (1.0 - ambient_occlusion(hit_point, hit.intersection.normal));
+    return vec4<f32>(hit.voxel.rgb * clamp(irradiance, 0.0, 1.0), 1.0);
 }
