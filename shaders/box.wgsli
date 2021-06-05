@@ -7,7 +7,7 @@ struct Box {
     inv_radius: vec3<f32>;
 };
 
-fn box_at(point: vec3<f32>, mip_level: u32) -> Box {
+fn unit_box_at(point: vec3<f32>, mip_level: u32) -> Box {
     var box: Box;
     box.radius = voxel_radius[mip_level];
     box.inv_radius = voxel_inv_radius[mip_level];

@@ -38,7 +38,8 @@ impl Compute {
                 state::bind_group_layout_entry(0, wgpu::ShaderStage::COMPUTE),
                 pixel_buffer_layout_entry,
                 voxel::texture_layout_entry(2),
-                voxel::sampler_layout_entry(3),
+                voxel::sampler_layout_entry(3, false),
+                voxel::sampler_layout_entry(4, true),
             ],
         });
 
@@ -84,7 +85,8 @@ impl Compute {
         state: &state::State,
         pixel_buffer: &wgpu::Buffer,
         voxel_view: &wgpu::TextureView,
-        voxel_sampler: &wgpu::Sampler,
+        voxel_nearest_sampler: &wgpu::Sampler,
+        voxel_linear_sampler: &wgpu::Sampler,
     ) -> wgpu::CommandEncoder {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Compute Encoder"),
@@ -105,7 +107,11 @@ impl Compute {
                 },
                 wgpu::BindGroupEntry {
                     binding: 3,
-                    resource: wgpu::BindingResource::Sampler(&voxel_sampler),
+                    resource: wgpu::BindingResource::Sampler(&voxel_nearest_sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::Sampler(&voxel_linear_sampler),
                 },
             ],
         });

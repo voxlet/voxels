@@ -26,9 +26,9 @@ fn to_color(i: usize, size: usize) -> u8 {
 
 fn caves(size: usize) -> Vec<[u8; 4]> {
     tracing::info!("generating cave noise");
-    let noise = simdnoise::NoiseBuilder::gradient_3d(size, size, size)
+    let noise = simdnoise::NoiseBuilder::fbm_3d(size, size, size)
         .with_seed(42)
-        .with_freq(8.0 / size as f32)
+        .with_freq(14.0 / size as f32)
         .generate_scaled(0.0, 1.0);
 
     tracing::info!("allocating caves");
@@ -66,7 +66,7 @@ fn caves(size: usize) -> Vec<[u8; 4]> {
             for x in 0..size {
                 let i = x + y * y_offs + *z * z_offs;
                 let n = noise[i];
-                if n > 0.75 {
+                if n > 0.6 {
                     (*slice)[x + y * y_offs] = [
                         to_color(*z, size),
                         to_color(y, size),
@@ -86,7 +86,7 @@ pub fn create_texture(
     queue: &wgpu::Queue,
     shaders: &mut Shaders,
     voxel_size: f32,
-) -> (wgpu::TextureView, wgpu::Sampler) {
+) -> (wgpu::TextureView, wgpu::Sampler, wgpu::Sampler) {
     let size = (1.0 / voxel_size).ceil() as usize;
 
     //let data = cubic_lattice(SIZE);
@@ -131,8 +131,10 @@ pub fn create_texture(
         extent,
     );
 
-    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-        label: Some("Voxel Sampler"),
+    mipmap::generate(device, queue, shaders, &texture_desc, &texture);
+
+    let nearest_descriptor = wgpu::SamplerDescriptor {
+        label: Some("Voxel Nearest Sampler"),
         address_mode_u: wgpu::AddressMode::MirrorRepeat,
         address_mode_v: wgpu::AddressMode::MirrorRepeat,
         address_mode_w: wgpu::AddressMode::MirrorRepeat,
@@ -140,11 +142,19 @@ pub fn create_texture(
         min_filter: wgpu::FilterMode::Nearest,
         mipmap_filter: wgpu::FilterMode::Nearest,
         ..wgpu::SamplerDescriptor::default()
+    };
+
+    let nearest_sampler = device.create_sampler(&nearest_descriptor);
+
+    let linear_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("Voxel Linear Sampler"),
+        mag_filter: wgpu::FilterMode::Linear,
+        min_filter: wgpu::FilterMode::Linear,
+        mipmap_filter: wgpu::FilterMode::Linear,
+        ..nearest_descriptor
     });
 
-    mipmap::generate(device, queue, shaders, &texture_desc, &texture);
-
-    (view, sampler)
+    (view, nearest_sampler, linear_sampler)
 }
 
 pub fn texture_layout_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
@@ -152,7 +162,7 @@ pub fn texture_layout_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
         binding,
         visibility: wgpu::ShaderStage::COMPUTE,
         ty: wgpu::BindingType::Texture {
-            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+            sample_type: wgpu::TextureSampleType::Float { filterable: true },
             view_dimension: wgpu::TextureViewDimension::D3,
             multisampled: false,
         },
@@ -160,12 +170,12 @@ pub fn texture_layout_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
     }
 }
 
-pub fn sampler_layout_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
+pub fn sampler_layout_entry(binding: u32, filtering: bool) -> wgpu::BindGroupLayoutEntry {
     wgpu::BindGroupLayoutEntry {
         binding,
         visibility: wgpu::ShaderStage::COMPUTE,
         ty: wgpu::BindingType::Sampler {
-            filtering: false,
+            filtering,
             comparison: false,
         },
         count: None,

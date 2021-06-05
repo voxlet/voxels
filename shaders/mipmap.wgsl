@@ -32,6 +32,6 @@ fn main(
     textureStore(
         output,
         vec3<i32>(gid),
-        vec4<f32>(v / v.a)
+        vec4<f32>(vec3<f32>(v.rgb / v.a), select(1.0, 0.0, v.a > 0.0))
     );
 }
