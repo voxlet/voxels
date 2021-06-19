@@ -1,5 +1,10 @@
-use std::num::NonZeroU32;
+use std::{
+    collections::HashMap,
+    num::NonZeroU32,
+    sync::{Arc, Mutex},
+};
 
+use lazy_static::lazy_static;
 use wgpu::util::DeviceExt;
 
 use crate::gpu::shader::Shaders;
@@ -11,6 +16,29 @@ struct Args {
     mip_level: u32,
 }
 
+fn args_uniform(device: &wgpu::Device, size: u32, mip_level: u32) -> Arc<wgpu::Buffer> {
+    lazy_static! {
+        static ref UNIFORMS: Mutex<HashMap<(u32, u32), Arc<wgpu::Buffer>>> =
+            Mutex::new(HashMap::new());
+    }
+    let mut uniforms = UNIFORMS.lock().unwrap();
+    if let Some(uniform) = uniforms.get(&(size, mip_level)) {
+        return uniform.clone();
+    }
+
+    let args = Args { size, mip_level };
+    let uniform = Arc::new(
+        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Mipmap Args Uniform"),
+            contents: bytemuck::cast_slice(&[args]),
+            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+        }),
+    );
+
+    uniforms.insert((size, mip_level), uniform.clone());
+    return uniform;
+}
+
 pub fn generate_level(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -19,12 +47,7 @@ pub fn generate_level(
     mip_level: u32,
     texture: &wgpu::Texture,
 ) {
-    let args = Args { size, mip_level };
-    let uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Mipmap Args Uniform"),
-        contents: bytemuck::cast_slice(&[args]),
-        usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-    });
+    let uniform = args_uniform(device, size, mip_level);
 
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
         label: Some("Mipmap Encoder"),

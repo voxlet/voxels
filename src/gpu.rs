@@ -1,7 +1,7 @@
 mod pipelines;
 pub mod shader;
 mod state;
-mod voxel;
+pub mod voxel;
 
 use state::State;
 use std::{
@@ -19,6 +19,8 @@ pub struct Gpu {
     pub device: Arc<wgpu::Device>,
     pub queue: wgpu::Queue,
     pub state: State,
+    voxel_texture_desc: wgpu::TextureDescriptor<'static>,
+    voxel_texture: wgpu::Texture,
     voxel_view: wgpu::TextureView,
     voxel_nearest_sampler: wgpu::Sampler,
     voxel_linear_sampler: wgpu::Sampler,
@@ -35,7 +37,12 @@ fn pixel_buffer_size(width: u32, height: u32) -> u64 {
 }
 
 impl Gpu {
-    pub async fn new(window: &winit::window::Window, camera: &Camera) -> Self {
+    pub async fn new(
+        window: &winit::window::Window,
+        voxels: &Vec<[u8; 4]>,
+        voxel_resolution: usize,
+        camera: &Camera,
+    ) -> Self {
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
         let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
@@ -67,8 +74,13 @@ impl Gpu {
         let state = State::from(&device, width, height, camera);
 
         let mut shaders = Shaders::new("shaders");
-        let (voxel_view, voxel_nearest_sampler, voxel_linear_sampler) =
-            voxel::create_texture(&device, &queue, &mut shaders, state.data.voxel_size);
+        let (
+            voxel_texture,
+            voxel_texture_desc,
+            voxel_view,
+            voxel_nearest_sampler,
+            voxel_linear_sampler,
+        ) = voxel::create_texture(&device, &queue, &mut shaders, voxels, voxel_resolution);
 
         let pixel_buffer_desc = wgpu::BufferDescriptor {
             label: Some("Compute Pixel Buffer"),
@@ -96,6 +108,8 @@ impl Gpu {
             device,
             queue,
             state,
+            voxel_texture,
+            voxel_texture_desc,
             voxel_view,
             voxel_nearest_sampler,
             voxel_linear_sampler,
@@ -138,14 +152,23 @@ impl Gpu {
         );
     }
 
-    pub fn set_voxel_size(&mut self, voxel_size: f32) {
-        let (voxel_view, voxel_nearest_sampler, voxel_linear_sampler) = voxel::create_texture(
+    pub fn set_voxels(&mut self, voxels: &Vec<[u8; 4]>, voxel_resolution: usize) {
+        let (
+            voxel_texture,
+            voxel_texture_desc,
+            voxel_view,
+            voxel_nearest_sampler,
+            voxel_linear_sampler,
+        ) = voxel::create_texture(
             &self.device,
             &self.queue,
             &mut self.shaders.lock().unwrap(),
-            voxel_size,
+            voxels,
+            voxel_resolution,
         );
 
+        self.voxel_texture = voxel_texture;
+        self.voxel_texture_desc = voxel_texture_desc;
         self.voxel_view = voxel_view;
         self.voxel_nearest_sampler = voxel_nearest_sampler;
         self.voxel_linear_sampler = voxel_linear_sampler;
@@ -153,10 +176,22 @@ impl Gpu {
         self.state.update(
             &self.queue,
             &state::Update {
-                voxel_size: Some(voxel_size),
+                voxel_size: Some(1.0 / voxel_resolution as f32),
                 ..Default::default()
             },
         );
+    }
+
+    pub fn update_voxels(&mut self, voxels: &Vec<[u8; 4]>, size: usize) {
+        voxel::update_texture(
+            &self.device,
+            &self.queue,
+            &mut self.shaders.lock().unwrap(),
+            &self.voxel_texture,
+            &self.voxel_texture_desc,
+            voxels,
+            size,
+        )
     }
 
     pub fn get_current_frame(&self) -> Result<wgpu::SwapChainTexture, wgpu::SwapChainError> {
