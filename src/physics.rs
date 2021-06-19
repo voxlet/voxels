@@ -1,9 +1,10 @@
 use std::time::Duration;
 
 use rapier3d::prelude::*;
+use winit::event;
 // use rayon::prelude::*;
 
-use crate::gpu::voxel;
+use crate::{gpu::voxel, state::State};
 
 pub struct Physics {
     gravity: Vector<Real>,
@@ -16,10 +17,40 @@ pub struct Physics {
     ccd_solver: CCDSolver,
     bodies: RigidBodySet,
     colliders: ColliderSet,
+    query_pipeline: QueryPipeline,
 }
 
 fn voxel_world_size(voxel_resolution: usize) -> f32 {
     512.0 / voxel_resolution as f32
+}
+
+fn to_user_data(voxel: [u8; 4]) -> u128 {
+    voxel[0] as u128
+        + ((voxel[1] as u128) << 8)
+        + ((voxel[2] as u128) << 16)
+        + ((voxel[3] as u128) << 24)
+}
+
+fn new_voxel_collider_builder(voxel_world_radius: f32, user_data: u128) -> ColliderBuilder {
+    ColliderBuilder::cuboid(voxel_world_radius, voxel_world_radius, voxel_world_radius)
+        .friction(0.8)
+        .restitution(0.3)
+        .user_data(user_data)
+}
+
+fn insert_body(
+    bodies: &mut RigidBodySet,
+    colliders: &mut ColliderSet,
+    translation: Vector<Real>,
+    linvel: Vector<Real>,
+    collider: Collider,
+) {
+    let body = RigidBodyBuilder::new_dynamic()
+        .translation(translation)
+        .linvel(linvel)
+        .build();
+    let body_handle = bodies.insert(body);
+    colliders.insert_with_parent(collider, body_handle, bodies);
 }
 
 fn set_voxels(
@@ -49,26 +80,17 @@ fn set_voxels(
                         (z as f32 + 0.5) * voxel_world_size
                     ];
 
-                    let collider_builder = ColliderBuilder::cuboid(
-                        voxel_world_radius,
-                        voxel_world_radius,
-                        voxel_world_radius,
-                    )
-                    .restitution(0.5)
-                    .user_data(
-                        voxel[0] as u128
-                            + ((voxel[1] as u128) << 8)
-                            + ((voxel[2] as u128) << 16)
-                            + ((voxel[3] as u128) << 24),
-                    );
+                    let collider_builder =
+                        new_voxel_collider_builder(voxel_world_radius, to_user_data(voxel));
 
-                    if y > (size as f32 * 0.9) as usize {
-                        let body = RigidBodyBuilder::new_dynamic()
-                            .translation(translation)
-                            .linvel(vector![0.0, 0.01, 0.0])
-                            .build();
-                        let body_handle = bodies.insert(body);
-                        colliders.insert_with_parent(collider_builder.build(), body_handle, bodies);
+                    if y == size - 1 {
+                        insert_body(
+                            bodies,
+                            colliders,
+                            translation,
+                            vector!(0.0, 0.0, 0.0),
+                            collider_builder.build(),
+                        );
                     } else {
                         let collider = collider_builder.translation(translation).build();
                         colliders.insert(collider);
@@ -106,6 +128,7 @@ impl Physics {
             ccd_solver,
             bodies,
             colliders,
+            query_pipeline: QueryPipeline::new(),
         }
     }
 
@@ -113,10 +136,13 @@ impl Physics {
         *self = Self::new(voxels, size);
     }
 
-    pub fn update(&mut self, _dt: Duration) {
+    pub fn update(&mut self, dt: Duration) {
         self.physics_pipeline.step(
             &self.gravity,
-            &self.integration_parameters,
+            &IntegrationParameters {
+                dt: dt.as_secs_f32().min(0.5),
+                ..self.integration_parameters
+            },
             &mut self.islands,
             &mut self.broad_phase,
             &mut self.narrow_phase,
@@ -129,7 +155,67 @@ impl Physics {
         )
     }
 
-    pub fn write_voxels(&self, size: usize, voxels: &mut Vec<[u8; 4]>) {
+    pub fn input(&mut self, event: &event::DeviceEvent, state: &State) {
+        match event {
+            event::DeviceEvent::Button {
+                button: 1,
+                state: event::ElementState::Pressed,
+            } => {
+                self.query_pipeline
+                    .update(&self.islands, &self.bodies, &self.colliders);
+
+                let origin = state.camera.position * 512.0;
+                let dir = state.camera.rotation * glam::vec3(0.0, 0.0, 1.0);
+                tracing::info!(origin = ?origin, dir = ?dir);
+
+                let ray = Ray::new(origin.into(), dir.into());
+
+                if let Some((handle, _)) = self.query_pipeline.cast_ray(
+                    &self.colliders,
+                    &ray,
+                    300.0,
+                    true,
+                    InteractionGroups::all(),
+                    None,
+                ) {
+                    let colliders = &mut self.colliders;
+                    if let Some(collider) = colliders.get_mut(handle) {
+                        collider.user_data = 0xFFFFFFFF;
+                        let linvel = (dir * 10.0).into();
+                        if let Some(body_handle) = collider.parent() {
+                            tracing::info!("has parent");
+                            if let Some(body) = self.bodies.get_mut(body_handle) {
+                                body.set_linvel(linvel, true);
+                            }
+                            return;
+                        }
+                        if let Some(collider) =
+                            colliders.remove(handle, &mut self.islands, &mut self.bodies, false)
+                        {
+                            tracing::info!(translation = ?collider.translation(), "hit");
+
+                            let c = new_voxel_collider_builder(
+                                voxel_world_size(state.voxel_resolution) * 0.5,
+                                collider.user_data,
+                            );
+                            insert_body(
+                                &mut self.bodies,
+                                colliders,
+                                *collider.translation(),
+                                linvel,
+                                c.build(),
+                            )
+                        }
+                    }
+                } else {
+                    tracing::info!("no hit");
+                }
+            }
+            _ => {}
+        }
+    }
+
+    pub fn write_voxels(&mut self, size: usize, voxels: &mut Vec<[u8; 4]>) {
         const ZERO: [u8; 4] = [0, 0, 0, 0];
         for i in 0..(size * size * size) {
             voxels[i] = ZERO;
@@ -137,23 +223,40 @@ impl Physics {
 
         let vws = voxel_world_size(size);
 
-        fn to_index(pos: f32, vws: f32, size: usize) -> usize {
-            ((pos / vws).floor() as usize).clamp(0, size - 1)
+        fn to_index(pos: f32, vws: f32) -> usize {
+            (pos / vws).floor() as usize
         }
 
-        self.colliders.iter().for_each(|(_, collider)| {
+        let mut out_of_bounds = Vec::new();
+
+        self.colliders.iter().for_each(|(handle, collider)| {
             let user_data = collider.user_data;
             let t = collider.translation();
-            let x = to_index(t.x, vws, size);
-            let y = to_index(t.y, vws, size);
-            let z = to_index(t.z, vws, size);
+            let x = to_index(t.x, vws);
+            let y = to_index(t.y, vws);
+            let z = to_index(t.z, vws);
 
-            voxels[x + y * size + z * size * size] = [
-                (user_data & 0xFF) as u8,
-                ((user_data & 0xFF00) >> 8) as u8,
-                ((user_data & 0xFF0000) >> 16) as u8,
-                ((user_data & 0xFF000000) >> 24) as u8,
-            ]
+            if 0.0 <= t.x
+                && x <= size - 1
+                && 0.0 <= t.y
+                && y <= size - 1
+                && 0.0 <= t.z
+                && z <= size - 1
+            {
+                voxels[x + y * size + z * size * size] = [
+                    (user_data & 0xFF) as u8,
+                    ((user_data & 0xFF00) >> 8) as u8,
+                    ((user_data & 0xFF0000) >> 16) as u8,
+                    ((user_data & 0xFF000000) >> 24) as u8,
+                ];
+            } else {
+                out_of_bounds.push(handle)
+            }
+        });
+
+        out_of_bounds.iter().for_each(|h| {
+            self.colliders
+                .remove(*h, &mut self.islands, &mut self.bodies, false);
         })
     }
 }

@@ -8,29 +8,43 @@ use crate::{
 
 use winit::{
     dpi::PhysicalSize,
-    event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
+    event::{self, ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder,
+    window::{self, WindowBuilder},
 };
 
 use crate::state::State;
 
-pub fn resize(state: &mut State, gpu: &mut Gpu, size: PhysicalSize<u32>, scale_factor: f64) {
+fn resize(state: &mut State, gpu: &mut Gpu, size: PhysicalSize<u32>, scale_factor: f64) {
     state.resize(size, scale_factor);
     gpu.resize(size.width, size.height);
 }
 
-pub fn update(state: &mut State, physics: &mut Physics, gpu: &mut Gpu) {
+fn input(
+    window: &window::Window,
+    event: &event::DeviceEvent,
+    state: &mut State,
+    physics: &mut Physics,
+) {
+    state.input(window, event);
+    physics.input(event, state);
+}
+
+fn update(state: &mut State, physics: &mut Physics, gpu: &mut Gpu) {
     let dt = state.update();
     let now = Instant::now();
     physics.update(dt);
-    physics.write_voxels(state.voxel_resolution, &mut state.voxels);
     state.physics_step_time = now.elapsed();
+    let now = Instant::now();
+    physics.write_voxels(state.voxel_resolution, &mut state.voxels);
+    state.physics_write_time = now.elapsed();
+    let now = Instant::now();
     gpu.update_voxels(&state.voxels, state.voxel_resolution);
+    state.voxel_transfer_time = now.elapsed();
     gpu.update(dt, &state.camera);
 }
 
-pub fn render(
+fn render(
     state: &mut State,
     physics: &mut Physics,
     gpu: &mut Gpu,
@@ -142,7 +156,7 @@ pub async fn run() {
                 window.request_redraw();
             }
             Event::DeviceEvent { ref event, .. } => {
-                state.input(&window, event);
+                input(&window, event, &mut state, &mut physics);
             }
             _ => {}
         }

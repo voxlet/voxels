@@ -27,3 +27,4 @@ lazy_static = "1"
 naga = "0.4"
 notify = "4"
 rapier3d = { version = "0.9", features = ["simd-stable", "parallel"] }
+nalgebra = {version = "*", features = ["convert-glam015"]}
