@@ -49,8 +49,8 @@ fn render(
     physics: &mut Physics,
     gpu: &mut Gpu,
     ui: &mut Option<ui::Ui>,
-) -> Result<(), wgpu::SwapChainError> {
-    let frame = gpu.get_current_frame()?;
+) -> Result<(), wgpu::SurfaceError> {
+    let frame = gpu.surface.get_current_texture()?;
     let mut render_encoder = gpu.render(&frame);
     if let Some(ui) = ui {
         ui.render(&frame, gpu, state, physics, &mut render_encoder);
@@ -75,7 +75,7 @@ pub fn set_voxel_resolution(
 pub async fn run() {
     let event_loop: EventLoop<ui::AppEvent> = EventLoop::with_user_event();
     let window = WindowBuilder::new()
-        .with_inner_size(PhysicalSize::new(1920, 1080))
+        .with_inner_size(PhysicalSize::<u32>::new(1920, 1080))
         .with_always_on_top(true)
         .build(&event_loop)
         .unwrap();
@@ -138,13 +138,13 @@ pub async fn run() {
             Event::RedrawEventsCleared => {
                 match render(&mut state, &mut physics, &mut gpu, &mut ui) {
                     // Recreate the swap_chain if lost
-                    Err(wgpu::SwapChainError::Lost) => {
+                    Err(wgpu::SurfaceError::Lost) => {
                         let size = state.size;
                         let scale_factor = state.scale_factor;
                         resize(&mut state, &mut gpu, size, scale_factor)
                     }
                     // The system is out of memory, we should probably quit
-                    Err(wgpu::SwapChainError::OutOfMemory) => *control_flow = ControlFlow::Exit,
+                    Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
                     // All other errors (Outdated, Timeout) should be resolved by the next frame
                     Err(e) => eprintln!("{:?}", e),
                     _ => {}

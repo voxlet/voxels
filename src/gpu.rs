@@ -15,7 +15,7 @@ pub use pipelines::Pipelines;
 use shader::Shaders;
 
 pub struct Gpu {
-    surface: wgpu::Surface,
+    pub surface: wgpu::Surface,
     pub device: Arc<wgpu::Device>,
     pub queue: wgpu::Queue,
     pub state: State,
@@ -26,8 +26,7 @@ pub struct Gpu {
     voxel_linear_sampler: wgpu::Sampler,
     pixel_buffer_desc: wgpu::BufferDescriptor<'static>,
     pixel_buffer: wgpu::Buffer,
-    pub swap_chain_desc: wgpu::SwapChainDescriptor,
-    swap_chain: wgpu::SwapChain,
+    pub surface_config: wgpu::SurfaceConfiguration,
     shaders: Arc<Mutex<Shaders>>,
     pipelines: Pipelines,
 }
@@ -43,14 +42,13 @@ impl Gpu {
         voxel_resolution: usize,
         camera: &Camera,
     ) -> Self {
-        // The instance is a handle to our GPU
-        // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
-        let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
+        let instance = wgpu::Instance::new(wgpu::Backends::all());
 
         let surface = unsafe { instance.create_surface(window) };
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
+                force_fallback_adapter: false,
                 compatible_surface: Some(&surface),
             })
             .await
@@ -59,7 +57,7 @@ impl Gpu {
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
-                    features: wgpu::Features::empty(),
+                    features: wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES,
                     limits: wgpu::Limits::default(),
                     label: None,
                 },
@@ -85,23 +83,23 @@ impl Gpu {
         let pixel_buffer_desc = wgpu::BufferDescriptor {
             label: Some("Compute Pixel Buffer"),
             size: pixel_buffer_size(width, height),
-            usage: wgpu::BufferUsage::STORAGE,
+            usage: wgpu::BufferUsages::STORAGE,
             mapped_at_creation: false,
         };
         let pixel_buffer = device.create_buffer(&pixel_buffer_desc);
 
-        let swap_chain_desc = wgpu::SwapChainDescriptor {
-            usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
+        let surface_config = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: wgpu::TextureFormat::Bgra8UnormSrgb,
             width: state.render_width,
             height: state.render_height,
             present_mode: wgpu::PresentMode::Mailbox,
         };
-        let swap_chain = device.create_swap_chain(&surface, &swap_chain_desc);
+        surface.configure(&device, &surface_config);
 
         let device = Arc::new(device);
         let shaders = Arc::new(Mutex::new(shaders));
-        let pipelines = Pipelines::new(&device, &shaders, &swap_chain_desc);
+        let pipelines = Pipelines::new(&device, &shaders, &surface_config);
 
         Gpu {
             surface,
@@ -115,8 +113,7 @@ impl Gpu {
             voxel_linear_sampler,
             pixel_buffer_desc,
             pixel_buffer,
-            swap_chain_desc,
-            swap_chain,
+            surface_config,
             shaders,
             pipelines,
         }
@@ -126,11 +123,9 @@ impl Gpu {
         self.pixel_buffer_desc.size = pixel_buffer_size(width, height);
         self.pixel_buffer = self.device.create_buffer(&self.pixel_buffer_desc);
 
-        self.swap_chain_desc.width = width;
-        self.swap_chain_desc.height = height;
-        self.swap_chain = self
-            .device
-            .create_swap_chain(&self.surface, &self.swap_chain_desc);
+        self.surface_config.width = width;
+        self.surface_config.height = height;
+        self.surface.configure(&self.device, &self.surface_config);
 
         self.state.update(
             &self.queue,
@@ -194,11 +189,7 @@ impl Gpu {
         )
     }
 
-    pub fn get_current_frame(&self) -> Result<wgpu::SwapChainTexture, wgpu::SwapChainError> {
-        Ok(self.swap_chain.get_current_frame()?.output)
-    }
-
-    pub fn render(&mut self, frame: &wgpu::SwapChainTexture) -> wgpu::CommandEncoder {
+    pub fn render(&mut self, frame: &wgpu::SurfaceTexture) -> wgpu::CommandEncoder {
         let compute_encoder = self.pipelines.compute.lock().unwrap().compute(
             &self.device,
             &self.state,

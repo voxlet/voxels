@@ -3,13 +3,12 @@
 [[group(0), binding(0)]]
 var<uniform> state: State;
 
-[[block]]
 struct PixelBuffer {
     pixels: array<vec4<f32>>;
 };
 
 [[group(0), binding(1)]]
-var<storage> pixel_buffer: [[access(read)]] PixelBuffer;
+var<storage, read> pixel_buffer: PixelBuffer;
 
 struct Vertex {
     [[builtin(position)]] pos: vec4<f32>;

@@ -20,65 +20,66 @@ fn direct_light(point: vec3<f32>, normal: vec3<f32>) -> f32 {
 }
 
 fn ambient_occlusion(point: vec3<f32>, normal: vec3<f32>) -> f32 {
-    let probes: array<vec3<f32>, 8> = select(
-        array<vec3<f32>, 8>(
-            ao_probes[2] + ao_probes[4],
-            ao_probes[2] + ao_probes[5],
-            ao_probes[3] + ao_probes[4],
-            ao_probes[3] + ao_probes[5],
-            ao_probes[2],
-            ao_probes[3],
-            ao_probes[4],
-            ao_probes[5],
-        ),
-        select(
-            array<vec3<f32>, 8>(
-                ao_probes[0] + ao_probes[4],
-                ao_probes[0] + ao_probes[5],
-                ao_probes[1] + ao_probes[4],
-                ao_probes[1] + ao_probes[5],
-                ao_probes[0],
-                ao_probes[1],
-                ao_probes[4],
-                ao_probes[5],
-            ),
-            array<vec3<f32>, 8>(
-                ao_probes[0] + ao_probes[2],
-                ao_probes[0] + ao_probes[3],
-                ao_probes[1] + ao_probes[2],
-                ao_probes[1] + ao_probes[3],
-                ao_probes[0],
-                ao_probes[1],
-                ao_probes[2],
-                ao_probes[3],
-            ),
-            normal.y != 0.0
-        ),
-        normal.x != 0.0
-    );
+    // let probes: array<vec3<f32>, 8> = select(
+    //     array<vec3<f32>, 8>(
+    //         ao_probes[2] + ao_probes[4],
+    //         ao_probes[2] + ao_probes[5],
+    //         ao_probes[3] + ao_probes[4],
+    //         ao_probes[3] + ao_probes[5],
+    //         ao_probes[2],
+    //         ao_probes[3],
+    //         ao_probes[4],
+    //         ao_probes[5],
+    //     ),
+    //     select(
+    //         array<vec3<f32>, 8>(
+    //             ao_probes[0] + ao_probes[4],
+    //             ao_probes[0] + ao_probes[5],
+    //             ao_probes[1] + ao_probes[4],
+    //             ao_probes[1] + ao_probes[5],
+    //             ao_probes[0],
+    //             ao_probes[1],
+    //             ao_probes[4],
+    //             ao_probes[5],
+    //         ),
+    //         array<vec3<f32>, 8>(
+    //             ao_probes[0] + ao_probes[2],
+    //             ao_probes[0] + ao_probes[3],
+    //             ao_probes[1] + ao_probes[2],
+    //             ao_probes[1] + ao_probes[3],
+    //             ao_probes[0],
+    //             ao_probes[1],
+    //             ao_probes[2],
+    //             ao_probes[3],
+    //         ),
+    //         normal.y != 0.0
+    //     ),
+    //     normal.x != 0.0
+    // );
 
-    var ret: f32 = 0.0;
-    var i: u32 = 0u;
-    loop {
-        let occlusion = sample_cone(
-            ray_from(
-                point, //+ normal * voxel_radius[0].x * 1.95,
-                probes[i] + normal
-            ),
-            0.1, 1u
-        );
+    // var ret: f32 = 0.0;
+    // var i: u32 = 0u;
+    // loop {
+    //     let occlusion = sample_cone(
+    //         ray_from(
+    //             point, //+ normal * voxel_radius[0].x * 1.95,
+    //             probes[i] + normal
+    //         ),
+    //         0.1, 1u
+    //     );
 
-        let d = occlusion.voxel.a; // * voxel_radius[0].x / occlusion.intersection.distance;
+    //     let d = occlusion.voxel.a; // * voxel_radius[0].x / occlusion.intersection.distance;
 
-        ret = ret + d * d * 0.125;
+    //     ret = ret + d * d * 0.125;
 
-        i = i + 1u;
-        if (i >= 8u) {
-            break;
-        }
-    }
-    // return 0.0;
-    return min(ret * 1.0, 1.0);
+    //     i = i + 1u;
+    //     if (i >= 8u) {
+    //         break;
+    //     }
+    // }
+    // return min(ret * 1.0, 1.0);
+
+    return 0.0;
 }
 
 let ambient_light_intensity: f32 = 0.15;

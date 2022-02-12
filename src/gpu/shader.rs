@@ -12,21 +12,22 @@ struct ValidationError {}
 fn validate(full_path: &path::Path) -> Result<(), ValidationError> {
     let load::Source { code, .. } = load::load(full_path);
 
-    let mut validator = naga::valid::Validator::new(naga::valid::ValidationFlags::all());
+    let mut validator =
+        naga::valid::Validator::new(naga::valid::ValidationFlags::all(), Default::default());
     match naga::front::wgsl::parse_str(&code) {
         Err(e) => {
-            e.emit_to_stderr();
+            e.emit_to_stderr(&code);
             Err(ValidationError {})
         }
         Ok(module) => {
             if let Err(e) = validator.validate(&module) {
                 eprintln!("{}", e);
-                match e {
-                    naga::valid::ValidationError::Function { error, .. } => {
-                        eprintln!("{}", error);
-                    }
-                    _ => {}
-                };
+                // match e.inner {
+                //     naga::valid::ValidationError::Function { error, .. } => {
+                //         eprintln!("{}", error);
+                //     }
+                //     _ => {}
+                // };
                 return Err(ValidationError {});
             };
             Ok(())

@@ -127,6 +127,7 @@ pub fn update_texture(
             texture: &texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
         },
         bytemuck::cast_slice(&data),
         wgpu::ImageDataLayout {
@@ -166,9 +167,9 @@ pub fn create_texture(
         sample_count: 1,
         dimension: wgpu::TextureDimension::D3,
         format: wgpu::TextureFormat::Rgba8Unorm,
-        usage: wgpu::TextureUsage::STORAGE
-            | wgpu::TextureUsage::SAMPLED
-            | wgpu::TextureUsage::COPY_DST,
+        usage: wgpu::TextureUsages::STORAGE_BINDING
+            | wgpu::TextureUsages::TEXTURE_BINDING
+            | wgpu::TextureUsages::COPY_DST,
     };
     let texture = device.create_texture(&texture_desc);
 
@@ -206,7 +207,7 @@ pub fn create_texture(
 pub fn texture_layout_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
     wgpu::BindGroupLayoutEntry {
         binding,
-        visibility: wgpu::ShaderStage::COMPUTE,
+        visibility: wgpu::ShaderStages::COMPUTE,
         ty: wgpu::BindingType::Texture {
             sample_type: wgpu::TextureSampleType::Float { filterable: true },
             view_dimension: wgpu::TextureViewDimension::D3,
@@ -217,13 +218,16 @@ pub fn texture_layout_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
 }
 
 pub fn sampler_layout_entry(binding: u32, filtering: bool) -> wgpu::BindGroupLayoutEntry {
+    let sampler_binding_type = if filtering {
+        wgpu::SamplerBindingType::Filtering
+    } else {
+        wgpu::SamplerBindingType::NonFiltering
+    };
+
     wgpu::BindGroupLayoutEntry {
         binding,
-        visibility: wgpu::ShaderStage::COMPUTE,
-        ty: wgpu::BindingType::Sampler {
-            filtering,
-            comparison: false,
-        },
+        visibility: wgpu::ShaderStages::COMPUTE,
+        ty: wgpu::BindingType::Sampler(sampler_binding_type),
         count: None,
     }
 }

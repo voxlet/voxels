@@ -17,13 +17,12 @@ impl Compute {
         let source_file = "compute.wgsl";
         let compute_shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("Compute Shader"),
-            flags: wgpu::ShaderFlags::default(),
             source: shaders.lock().unwrap().source(source_file),
         });
 
         let pixel_buffer_layout_entry = wgpu::BindGroupLayoutEntry {
             binding: 1,
-            visibility: wgpu::ShaderStage::COMPUTE,
+            visibility: wgpu::ShaderStages::COMPUTE,
             ty: wgpu::BindingType::Buffer {
                 ty: wgpu::BufferBindingType::Storage { read_only: false },
                 has_dynamic_offset: false,
@@ -35,7 +34,7 @@ impl Compute {
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("Compute Bind Group Layout"),
             entries: &[
-                state::bind_group_layout_entry(0, wgpu::ShaderStage::COMPUTE),
+                state::bind_group_layout_entry(0, wgpu::ShaderStages::COMPUTE),
                 pixel_buffer_layout_entry,
                 voxel::texture_layout_entry(2),
                 voxel::sampler_layout_entry(3, false),

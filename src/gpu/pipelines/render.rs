@@ -9,21 +9,20 @@ impl Render {
     pub fn new(
         device: &wgpu::Device,
         shaders: &mut Shaders,
-        swap_chain_desc: &wgpu::SwapChainDescriptor,
+        surface_config: &wgpu::SurfaceConfiguration,
     ) -> Self {
         let module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("Blit Shader"),
             source: shaders.source("blit.wgsl"),
-            flags: wgpu::ShaderFlags::default(),
         });
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("Render Bind Group Layout"),
             entries: &[
-                state::bind_group_layout_entry(0, wgpu::ShaderStage::FRAGMENT),
+                state::bind_group_layout_entry(0, wgpu::ShaderStages::FRAGMENT),
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Storage { read_only: true },
                         has_dynamic_offset: false,
@@ -52,9 +51,9 @@ impl Render {
                 module: &module,
                 entry_point: "frag_main",
                 targets: &[wgpu::ColorTargetState {
-                    format: swap_chain_desc.format,
+                    format: surface_config.format,
                     blend: None,
-                    write_mask: wgpu::ColorWrite::ALL,
+                    write_mask: wgpu::ColorWrites::ALL,
                 }],
             }),
             primitive: wgpu::PrimitiveState {
@@ -64,7 +63,7 @@ impl Render {
                 cull_mode: None,
                 // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
                 polygon_mode: wgpu::PolygonMode::Fill,
-                clamp_depth: false,
+                unclipped_depth: false,
                 conservative: false,
             },
             depth_stencil: None,
@@ -73,6 +72,7 @@ impl Render {
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },
+            multiview: None,
         });
 
         Self {
@@ -85,7 +85,7 @@ impl Render {
         &self,
         device: &wgpu::Device,
         state: &state::State,
-        frame: &wgpu::SwapChainTexture,
+        frame: &wgpu::SurfaceTexture,
         pixel_buffer: &wgpu::Buffer,
     ) -> wgpu::CommandEncoder {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -105,10 +105,14 @@ impl Render {
         });
 
         {
+            let view = frame.texture.create_view(&wgpu::TextureViewDescriptor {
+                label: Some("Surface View"),
+                ..Default::default()
+            });
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[wgpu::RenderPassColorAttachment {
-                    view: &frame.view,
+                    view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),

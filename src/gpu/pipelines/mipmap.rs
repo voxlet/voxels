@@ -31,7 +31,7 @@ fn args_uniform(device: &wgpu::Device, size: u32, mip_level: u32) -> Arc<wgpu::B
         device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Mipmap Args Uniform"),
             contents: bytemuck::cast_slice(&[args]),
-            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         }),
     );
 
@@ -133,7 +133,6 @@ pub fn generate(
     let source_file = "mipmap.wgsl";
     let compute_shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
         label: Some("Mipmap Shader"),
-        flags: wgpu::ShaderFlags::default(),
         source: shaders.source(source_file),
     });
 
@@ -142,7 +141,7 @@ pub fn generate(
         entries: &[
             wgpu::BindGroupLayoutEntry {
                 binding: 0,
-                visibility: wgpu::ShaderStage::COMPUTE,
+                visibility: wgpu::ShaderStages::COMPUTE,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
@@ -152,7 +151,7 @@ pub fn generate(
             },
             wgpu::BindGroupLayoutEntry {
                 binding: 1,
-                visibility: wgpu::ShaderStage::COMPUTE,
+                visibility: wgpu::ShaderStages::COMPUTE,
                 ty: wgpu::BindingType::StorageTexture {
                     access: wgpu::StorageTextureAccess::ReadOnly,
                     format: texture_desc.format,
@@ -162,7 +161,7 @@ pub fn generate(
             },
             wgpu::BindGroupLayoutEntry {
                 binding: 2,
-                visibility: wgpu::ShaderStage::COMPUTE,
+                visibility: wgpu::ShaderStages::COMPUTE,
                 ty: wgpu::BindingType::StorageTexture {
                     access: wgpu::StorageTextureAccess::WriteOnly,
                     format: texture_desc.format,
