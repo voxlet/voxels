@@ -42,11 +42,14 @@ impl Data {
             voxel_size,
         } = self;
 
+        const END_PADDING: [u8; 4] = [0; 4];
+
         concat_slices(&[
             &mat3x3_bytes(camera_rotation),
             &vec3_bytes(camera_position),
             bytemuck::bytes_of(resolution),
             bytemuck::bytes_of(voxel_size),
+            bytemuck::bytes_of(&END_PADDING),
         ])
     }
 }
