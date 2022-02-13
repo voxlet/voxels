@@ -1,4 +1,4 @@
-use voxels::app;
+use voxels_winit_wgpu::app;
 
 fn main() {
     tracing_subscriber::fmt::init();

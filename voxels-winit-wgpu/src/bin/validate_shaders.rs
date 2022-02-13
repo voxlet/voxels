@@ -8,8 +8,8 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     for shader in args[1].split(";") {
         println!("\n{}", shader);
-        let voxels::gpu::shader::load::Source { code, .. } =
-            voxels::gpu::shader::load::load(path::Path::new(shader));
+        let voxels_winit_wgpu::gpu::shader::load::Source { code, .. } =
+            voxels_winit_wgpu::gpu::shader::load::load(path::Path::new(shader));
         match naga::front::wgsl::parse_str(&code) {
             Err(e) => e.emit_to_stderr(&code),
             Ok(module) => {
