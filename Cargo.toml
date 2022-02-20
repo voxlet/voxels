@@ -3,8 +3,14 @@ resolver = "2"
 
 members = [
     "voxels",
-    "voxels-winit-wgpu"
+#    "voxels-winit-wgpu"
 ]
 
-[profile.dev.package.voxels-winit-wgpu]
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
 opt-level = 3
+
+[patch.crates-io]
+bevy = { git = "https://github.com/bevyengine/bevy", rev = "c4f132afbfe5688afd13f9b05040dfdf98b65489" }

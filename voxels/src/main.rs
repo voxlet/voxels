@@ -1,64 +1,40 @@
-use bevy::prelude::*;
+use bevy::{diagnostic, prelude::*};
 
-#[derive(Component)]
-struct Person;
-
-#[derive(Component)]
-struct Name(String);
-
-fn add_people(mut commands: Commands) {
-    commands
-        .spawn()
-        .insert(Person)
-        .insert(Name("Elaina Proctor".to_string()));
-    commands
-        .spawn()
-        .insert(Person)
-        .insert(Name("Renzo Hume".to_string()));
-    commands
-        .spawn()
-        .insert(Person)
-        .insert(Name("Zayna Nieves".to_string()));
-}
-
-struct GreetTimer(Timer);
-
-fn tick(time: Res<Time>, mut timer: ResMut<GreetTimer>) {
-    timer.0.tick(time.delta());
-}
-
-fn hello_world(timer: Res<GreetTimer>) {
-    if timer.0.just_finished() {
-        println!("hello world!");
-    }
-}
-
-fn greet_people(timer: Res<GreetTimer>, query: Query<&Name, With<Person>>) {
-    // update our timer with the time elapsed since the last update
-    // if that caused the timer to finish, we say hello to everyone
-    if timer.0.just_finished() {
-        for name in query.iter() {
-            println!("hello {}!", name.0);
-        }
-    }
-}
-
-pub struct HelloPlugin;
-
-impl Plugin for HelloPlugin {
-    fn build(&self, app: &mut App) {
-        // the reason we call from_seconds with the true flag is to make the timer repeat itself
-        app.insert_resource(GreetTimer(Timer::from_seconds(2.0, true)))
-            .add_startup_system(add_people)
-            .add_system(tick)
-            .add_system(hello_world)
-            .add_system(greet_people);
-    }
-}
+mod camera;
+mod inspector;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugin(HelloPlugin)
+        .add_plugin(diagnostic::FrameTimeDiagnosticsPlugin::default())
+        .add_plugin(diagnostic::LogDiagnosticsPlugin::default())
+        .add_plugin(inspector::InspectorPlugin)
+        .add_plugin(camera::CameraPlugin)
+        .add_startup_system(setup)
         .run();
+}
+
+fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    const WIDTH: usize = 100;
+    const HEIGHT: usize = 100;
+    let mesh = meshes.add(Mesh::from(shape::Cube { size: 1.0 }));
+    let material = materials.add(StandardMaterial {
+        base_color: Color::PINK,
+        ..Default::default()
+    });
+    for x in 0..WIDTH {
+        for y in 0..HEIGHT {
+            // cube
+            commands.spawn_bundle(PbrBundle {
+                mesh: mesh.clone(),
+                material: material.clone(),
+                transform: Transform::from_xyz((x as f32) * 2.0, (y as f32) * 2.0, 0.0),
+                ..Default::default()
+            });
+        }
+    }
 }

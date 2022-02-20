@@ -71,7 +71,7 @@ impl Gpu {
         let winit::dpi::PhysicalSize { width, height } = window.inner_size();
         let state = State::from(&device, width, height, camera);
 
-        let mut shaders = Shaders::new("shaders");
+        let mut shaders = Shaders::new("voxels-winit-wgpu/shaders");
         let (
             voxel_texture,
             voxel_texture_desc,
