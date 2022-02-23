@@ -3,7 +3,7 @@ resolver = "2"
 
 members = [
     "voxels",
-#    "voxels-winit-wgpu"
+    # "voxels-winit-wgpu"
 ]
 
 [profile.dev]
