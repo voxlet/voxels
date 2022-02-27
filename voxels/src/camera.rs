@@ -18,7 +18,7 @@ fn setup(mut commands: Commands) {
             ..smooth_fps_camera::FpsCameraController::default()
         },
         PerspectiveCameraBundle::default(),
-        Vec3::new(80.0, 80.0, 300.0),
+        Vec3::new(1.0, 2.5, 5.0),
         Vec3::new(0., 0., 0.),
     ));
 }
