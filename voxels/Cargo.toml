@@ -8,8 +8,8 @@ default-run = "voxels"
 
 [dependencies]
 smooth-bevy-cameras = "0.2"
-bevy-inspector-egui = "0.8"
-bevy_egui = "0.11"
+bevy-inspector-egui = "0.9"
+bevy_egui = "0.12"
 simdnoise = "3"
 block-mesh = { git = "https://github.com/bonsairobo/block-mesh-rs.git", rev = "68e9da" }
 
