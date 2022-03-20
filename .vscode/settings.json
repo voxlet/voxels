@@ -8,6 +8,7 @@
     "concat",
     "consts",
     "delinearize",
+    "despawn",
     "egui",
     "fract",
     "hidpi",

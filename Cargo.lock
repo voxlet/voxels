@@ -3008,6 +3008,7 @@ dependencies = [
  "bevy-inspector-egui",
  "bevy_egui",
  "block-mesh",
+ "futures-lite",
  "simdnoise",
  "smooth-bevy-cameras",
 ]
