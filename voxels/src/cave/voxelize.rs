@@ -5,7 +5,7 @@ use bevy::{
     tasks::{AsyncComputeTaskPool, Task},
 };
 use block_mesh::{
-    ndshape::{AbstractShape, Shape3u32},
+    ndshape::{RuntimeShape, Shape},
     MergeVoxel, Voxel, VoxelVisibility,
 };
 use futures_lite::future;
@@ -67,7 +67,7 @@ fn spawn_voxelize_cave_chunk_task(
 
         let sample_count = 2_u32.pow(cave_chunk.subdivisions);
         let shape_length = sample_count + 2;
-        let shape = Shape3u32::new([shape_length, shape_length, shape_length]);
+        let shape = RuntimeShape::<u32, 3>::new([shape_length, shape_length, shape_length]);
 
         let mut voxels: Vec<BoolVoxel> = Vec::with_capacity(shape.size() as usize);
 
@@ -128,7 +128,7 @@ fn handle_voxelize_cave_chunk_tasks(
 #[derive(Component, Clone)]
 pub struct CaveChunkVoxels {
     pub voxels: Arc<RwLock<Vec<BoolVoxel>>>,
-    pub shape: Shape3u32,
+    pub shape: RuntimeShape<u32, 3>,
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, Debug, Default)]

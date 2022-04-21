@@ -40,11 +40,7 @@ pub fn control_system(
         return;
     }
 
-    if let None = transform.look_direction() {
-        return;
-    }
     let look_vector = transform.look_direction().unwrap();
-
     let mut look_angles = LookAngles::from_vector(look_vector);
 
     let rot = Quat::from_euler(
