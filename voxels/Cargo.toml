@@ -43,7 +43,7 @@ features = [
     # "dynamic",
     # "serialize",
     "trace",
-    "trace_tracy",
+    # "trace_tracy",
     # "trace_chrome",
     # "wgpu_trace",
     "wayland",

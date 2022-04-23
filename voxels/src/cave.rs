@@ -3,17 +3,19 @@ use bevy::{prelude::*, tasks::AsyncComputeTaskPool};
 mod chunk;
 mod mesh;
 mod pbr;
+mod spawn;
 mod voxelize;
 
 pub struct CavePlugin;
 
 impl Plugin for CavePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(chunk::CaveChunkPlugin);
-        app.add_plugin(voxelize::VoxelizeCaveChunkPlugin);
-        app.add_plugin(mesh::MeshCaveChunkPlugin);
-        app.add_system(pbr::insert_cave_chunk_pbr);
-        app.add_system(test_spawn);
+        app.add_plugin(chunk::CaveChunkPlugin)
+            .add_plugin(spawn::CaveSpawnPlugin)
+            .add_plugin(voxelize::VoxelizeCaveChunkPlugin)
+            .add_plugin(mesh::MeshCaveChunkPlugin)
+            .add_system(pbr::insert_cave_chunk_pbr)
+            .add_system(test_spawn);
     }
 }
 
@@ -32,7 +34,7 @@ fn test_spawn(
                         - (origin.length() / 10.0).log2().max(0.0))
                     .max(1.0) as u32;
 
-                    commands.spawn().insert(chunk::spawn_cave_chunk_task(
+                    commands.spawn().insert(spawn::spawn_cave_chunk_task(
                         &task_pool,
                         settings.clone(),
                         origin,
