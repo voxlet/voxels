@@ -15,7 +15,6 @@ pub fn insert_cave_chunk_pbr(
         if let Some(cave_chunk) = query.get(ev.entity).ok() {
             let sample_count = 2_u32.pow(cave_chunk.subdivisions);
             let voxel_size = settings.size / sample_count as f32;
-            let index_zero_coord = -settings.size * 0.5;
 
             let pbr = commands
                 .spawn_bundle(PbrBundle {
@@ -26,17 +25,14 @@ pub fn insert_cave_chunk_pbr(
                 })
                 .id();
 
-            let origin_offset = commands
+            let transform = commands
                 .spawn()
-                .insert(
-                    Transform::from_translation(Vec3::splat(index_zero_coord))
-                        .with_scale(Vec3::splat(voxel_size)),
-                )
+                .insert(Transform::from_scale(Vec3::splat(voxel_size)))
                 .insert(GlobalTransform::default())
                 .add_child(pbr)
                 .id();
 
-            commands.entity(ev.entity).add_child(origin_offset);
+            commands.entity(ev.entity).add_child(transform);
             info!(entity = ?ev.entity)
         }
     });
