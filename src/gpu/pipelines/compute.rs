@@ -1,18 +1,24 @@
+use std::sync::{Arc, Mutex};
+
 use crate::gpu::{shader::Shaders, state};
 
 const WORKGROUP_SIZE: u32 = 30;
 
 pub struct Compute {
+    device: Arc<wgpu::Device>,
     pipeline: wgpu::ComputePipeline,
     bind_group_layout: wgpu::BindGroupLayout,
+    shaders: Arc<Mutex<Shaders>>,
+    source_file: String,
 }
 
 impl Compute {
-    pub fn new(device: &wgpu::Device, shaders: &Shaders) -> Self {
+    pub fn new(device: Arc<wgpu::Device>, shaders: Arc<Mutex<Shaders>>) -> Self {
+        let source_file = "compute.wgsl";
         let compute_shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("Compute Shader"),
             flags: wgpu::ShaderFlags::default(),
-            source: shaders.source("compute.wgsl"),
+            source: shaders.lock().unwrap().source("compute.wgsl"),
         });
 
         let pixel_buffer_layout_entry = wgpu::BindGroupLayoutEntry {
@@ -71,9 +77,26 @@ impl Compute {
         });
 
         Compute {
+            device,
             pipeline,
             bind_group_layout,
+            shaders: shaders.clone(),
+            source_file: source_file.to_string(),
         }
+    }
+
+    pub fn watch_source<F>(&mut self, mut on_recreate: F)
+    where
+        F: 'static + FnMut(Compute) + Send,
+    {
+        let device = self.device.clone();
+        let shaders = self.shaders.clone();
+        self.shaders
+            .lock()
+            .unwrap()
+            .watch_source(&self.source_file, move || {
+                on_recreate(Self::new(device.clone(), shaders.clone()))
+            })
     }
 
     pub fn compute(
