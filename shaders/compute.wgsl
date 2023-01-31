@@ -32,11 +32,6 @@ struct Box {
     inv_radius: vec3<f32>;
 };
 
-struct Hit {
-    distance: f32;
-    normal: vec3<f32>;
-};
-
 fn box_at(point: vec3<f32>) -> Box {
     var box: Box;
     box.radius = voxel_radius;
@@ -48,7 +43,12 @@ fn box_at(point: vec3<f32>) -> Box {
     return box;
 }
 
-fn intersect(ray: Ray, box: Box) -> Hit {
+struct Intersection {
+    distance: f32;
+    normal: vec3<f32>;
+};
+
+fn intersect(ray: Ray, box: Box) -> Intersection {
     let origin = ray.origin - box.center;
 
     var sgn: vec3<f32> = -sign(ray.direction);
@@ -76,45 +76,97 @@ fn intersect(ray: Ray, box: Box) -> Hit {
         sgn.x != 0.0
     );
 
-    var hit: Hit;
-    hit.distance = dist;
-    hit.normal = -sgn;
-    return hit;
+    var res: Intersection;
+    res.distance = dist;
+    res.normal = sgn;
+    return res;
 }
 
-var max_ray_distance: f32 = 1.4143;
-fn trace_ray(ray: Ray) -> vec4<f32> {
-    var color: vec4<f32> = vec4<f32>(0.0, 0.0, 0.0, 0.0);
+struct Hit {
+    hit: bool;
+    intersection: Intersection;
+    steps: u32;
+    voxel: vec4<f32>;
+};
+
+let max_march_steps: u32 = 2048u;
+let max_ray_distance: f32 = 1.4143;
+fn march_ray(ray: Ray) -> Hit {
+    var res: Hit;
+    res.hit = false;
+    res.steps = 0u;
+
+    var exit: Intersection;
+    var voxel: vec4<f32> = vec4<f32>(0.0);
     var box: Box = box_at(ray.origin);
-    var exit: Hit;
-    var count: i32 = 0;
     loop {
-        count = count + 1;
         exit = intersect(ray, box);
-        box = box_at(box.center + vec3<f32>(box.radius * 2.0) * exit.normal);
-        color = textureSampleLevel(
-            voxels,
-            voxel_sampler,
-            box.center,
-            0.0
+        box = box_at(box.center - vec3<f32>(box.radius * 2.0) * exit.normal);
+        voxel = select(
+            vec4<f32>(0.0),
+            textureSampleLevel(
+                voxels,
+                voxel_sampler,
+                box.center,
+                0.0
+            ),
+            any(box.center > vec3<f32>(1.0))
         );
-        if (color.a > 0.5 || count > 2048 || exit.distance > max_ray_distance) {
-            color = color * (1.0 + dot(exit.normal, vec3<f32>(1.0, 2.0, 1.0)) * -0.3);
-            color = select(vec4<f32>(1.0,0.0,0.0,1.0), color, count > 1024);
-            break;
+        if (voxel.a > 0.5 ||
+            res.steps > max_march_steps ||
+            exit.distance > max_ray_distance) {
+            res.hit = voxel.a > 0.5;
+            res.intersection = exit;
+            res.voxel = voxel;
+            return res;
         }
+        res.steps = res.steps + 1u;
     };
-    return color;
+    return res;
+}
+
+fn ray_from(origin: vec3<f32>, direction: vec3<f32>) -> Ray {
+    var ray: Ray;
+    ray.origin = origin;
+    ray.direction = normalize(direction);
+    ray.inv_direction = 1.0 / ray.direction;
+    return ray;
+}
+
+let light: vec3<f32> = vec3<f32>(1.0, 3.0, 1.0);
+let shadow_intensity: f32 = 0.9;
+fn trace_ray(ray: Ray) -> vec4<f32> {
+    let hit = march_ray(ray);
+    if (!hit.hit) {
+        return vec4<f32>(0.0, 0.0, 0.0, 0.0);
+    }
+    // shadow
+    let hit_point = ray.direction * hit.intersection.distance + ray.origin;
+    let light_dir = light - hit_point;
+    let irradiance = dot(hit.intersection.normal, light_dir);
+    if (irradiance <= 0.0) {
+        return vec4<f32>(hit.voxel.rgb * (1.0 - shadow_intensity), hit.voxel.a);
+    }
+    let direct_light_ray = ray_from(hit_point, light_dir);
+    let shadow = march_ray(direct_light_ray);
+
+    return select(
+        vec4<f32>(hit.voxel.rgb * (1.0 - shadow_intensity), hit.voxel.a),
+        vec4<f32>(
+            hit.voxel.rgb * (1.0 - shadow_intensity * (1.0 - irradiance)),
+            hit.voxel.a
+        ),
+        shadow.hit
+    );
 }
 
 fn ray_for(gid: vec3<u32>) -> Ray {
-    var ray: Ray;
-    ray.origin = state.camera_position;
     var xy: vec2<f32> = vec2<f32>(gid.xy) / state.resolution * 2.0 - vec2<f32>(1.0, 1.0);
     xy.x = xy.x * state.resolution.x / state.resolution.y;
-    ray.direction = normalize(state.camera_rotation * vec3<f32>(xy, 1.0));
-    ray.inv_direction = 1.0 / ray.direction;
-    return ray;
+    return ray_from(
+        state.camera_position,
+        state.camera_rotation * vec3<f32>(xy, 1.0)
+    );
 }
 
 [[stage(compute), workgroup_size(30, 30)]]
