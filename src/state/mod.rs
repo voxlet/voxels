@@ -5,6 +5,8 @@ use crate::gpu;
 pub struct State {
     pub size: winit::dpi::PhysicalSize<u32>,
     clear_color: wgpu::Color,
+    start_time: std::time::Instant,
+    last_update_time: std::time::Instant,
     gpu: gpu::Gpu,
 }
 
@@ -14,6 +16,8 @@ impl State {
         Self {
             size: window.inner_size(),
             clear_color: wgpu::Color::BLACK,
+            start_time: std::time::Instant::now(),
+            last_update_time: std::time::Instant::now(),
             gpu: gpu::Gpu::new(window).await,
         }
     }
@@ -41,7 +45,10 @@ impl State {
     }
 
     pub fn update(&mut self) {
-        // todo!()
+        let now = std::time::Instant::now();
+        let dt = now - self.last_update_time;
+        self.gpu.update(self.start_time, dt);
+        self.last_update_time = now;
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SwapChainError> {

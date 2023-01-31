@@ -1,5 +1,6 @@
 [[block]]
 struct State {
+  camera_position: vec3<f32>;
   resolution: vec2<f32>;
 };
 

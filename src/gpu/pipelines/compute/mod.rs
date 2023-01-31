@@ -16,20 +16,45 @@ impl Compute {
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("compute.wgsl"))),
         });
 
+        let pixel_buffer_layout_entry = wgpu::BindGroupLayoutEntry {
+            binding: 1,
+            visibility: wgpu::ShaderStage::COMPUTE,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        };
+
+        let voxel_texture_layout_entry = wgpu::BindGroupLayoutEntry {
+            binding: 2,
+            visibility: wgpu::ShaderStage::COMPUTE,
+            ty: wgpu::BindingType::Texture {
+                sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                view_dimension: wgpu::TextureViewDimension::D3,
+                multisampled: false,
+            },
+            count: None,
+        };
+
+        let voxel_sampler_layout_entry = wgpu::BindGroupLayoutEntry {
+            binding: 3,
+            visibility: wgpu::ShaderStage::COMPUTE,
+            ty: wgpu::BindingType::Sampler {
+                filtering: true,
+                comparison: false,
+            },
+            count: None,
+        };
+
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("Compute Bind Group Layout"),
             entries: &[
                 state::bind_group_layout_entry(0, wgpu::ShaderStage::COMPUTE),
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStage::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
+                pixel_buffer_layout_entry,
+                voxel_texture_layout_entry,
+                voxel_sampler_layout_entry,
             ],
         });
 
@@ -57,6 +82,8 @@ impl Compute {
         device: &wgpu::Device,
         state: &state::State,
         pixel_buffer: &wgpu::Buffer,
+        voxel_view: &wgpu::TextureView,
+        voxel_sampler: &wgpu::Sampler,
     ) -> wgpu::CommandEncoder {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Compute Encoder"),
@@ -70,6 +97,14 @@ impl Compute {
                 wgpu::BindGroupEntry {
                     binding: 1,
                     resource: pixel_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&voxel_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Sampler(&voxel_sampler),
                 },
             ],
         });
