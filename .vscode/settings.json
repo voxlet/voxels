@@ -13,6 +13,7 @@
     "bytemuck",
     "concat",
     "consts",
+    "egui",
     "fract",
     "mipmap",
     "multisample",
