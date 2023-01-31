@@ -5,7 +5,17 @@ use bevy::{
     prelude::*,
 };
 use bevy_egui::{egui, EguiContext};
-use bevy_inspector_egui::{egui::Ui, WorldInspectorParams};
+use bevy_inspector_egui::{
+    egui::Ui, plugin::InspectorWindows, widgets::ResourceInspector, Inspectable,
+    WorldInspectorParams, WorldInspectorPlugin,
+};
+
+use crate::camera::CameraControlSettings;
+
+#[derive(Inspectable, Default, Debug)]
+struct Inspector {
+    camera_control_settings: ResourceInspector<CameraControlSettings>,
+}
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 enum InspectorState {
@@ -18,7 +28,8 @@ pub struct InspectorPlugin;
 impl Plugin for InspectorPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(bevy_egui::EguiPlugin)
-            .add_plugin(bevy_inspector_egui::WorldInspectorPlugin::new())
+            .add_plugin(WorldInspectorPlugin::new())
+            .add_plugin(bevy_inspector_egui::InspectorPlugin::<Inspector>::new())
             .add_system(toggle)
             .add_system(ui)
             .add_system_set(SystemSet::on_enter(InspectorState::Active).with_system(activate))
@@ -46,7 +57,7 @@ fn ui(
     if *state.current() == InspectorState::Inactive {
         return;
     }
-    egui::Window::new("Inspector")
+    egui::Window::new("Metrics")
         .resizable(true)
         .show(egui_ctx.ctx_mut(), |ui| {
             diagnostics_ui(ui, diagnostics, time.startup())
@@ -90,14 +101,19 @@ fn diagnostic_ui(ui: &mut Ui, diagnostic: &Diagnostic, start_time: Instant) {
     ui.end_row();
 }
 
-fn activate(world_inspector: ResMut<WorldInspectorParams>) {
-    update_active(true, world_inspector);
+fn activate(world_inspector: ResMut<WorldInspectorParams>, inspectors: ResMut<InspectorWindows>) {
+    update_active(true, world_inspector, inspectors);
 }
 
-fn deactivate(world_inspector: ResMut<WorldInspectorParams>) {
-    update_active(false, world_inspector);
+fn deactivate(world_inspector: ResMut<WorldInspectorParams>, inspectors: ResMut<InspectorWindows>) {
+    update_active(false, world_inspector, inspectors);
 }
 
-fn update_active(active: bool, mut world_inspector: ResMut<WorldInspectorParams>) {
+fn update_active(
+    active: bool,
+    mut world_inspector: ResMut<WorldInspectorParams>,
+    mut inspectors: ResMut<InspectorWindows>,
+) {
     world_inspector.enabled = active;
+    inspectors.window_data_mut::<Inspector>().visible = active;
 }

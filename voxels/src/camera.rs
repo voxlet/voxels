@@ -1,4 +1,5 @@
 use bevy::{input::mouse::MouseMotion, math::Vec2Swizzles, prelude::*};
+use bevy_inspector_egui::Inspectable;
 
 pub struct CameraPlugin;
 
@@ -7,7 +8,7 @@ impl Plugin for CameraPlugin {
         app.register_type::<CameraControlSettings>()
             .insert_resource(CameraControlSettings {
                 rotate_sensitivity: 0.002,
-                move_speed: 0.1,
+                move_speed: 0.05,
                 sprint_factor: 10.0,
             })
             .add_event::<CameraControlEvent>()
@@ -16,7 +17,7 @@ impl Plugin for CameraPlugin {
     }
 }
 
-#[derive(Reflect)]
+#[derive(Reflect, Inspectable, Debug, Default)]
 pub struct CameraControlSettings {
     pub rotate_sensitivity: f32,
     pub move_speed: f32,
