@@ -10,12 +10,20 @@ pub fn insert_cave_chunk_pbr(
 ) {
     events.iter().for_each(|ev| {
         if let Ok(cave_chunk) = query.get(ev.entity) {
+            spawned_cave_chunks.processing.remove(&ev.entity);
+
+            let mesh = if let Some(mesh) = &ev.mesh {
+                mesh
+            } else {
+                return;
+            };
+
             let sample_count = 2_u32.pow(cave_chunk.subdivisions);
             let voxel_size = cave_chunk.settings.size / sample_count as f32;
 
             let pbr = commands
                 .spawn_bundle(PbrBundle {
-                    mesh: ev.mesh.clone(),
+                    mesh: mesh.clone(),
                     material: cave_chunk.settings.material.clone(),
                     transform: Transform::from_translation(Vec3::splat(-1.0)),
                     ..Default::default()
@@ -33,7 +41,6 @@ pub fn insert_cave_chunk_pbr(
 
             commands.entity(ev.entity).add_child(transform);
 
-            spawned_cave_chunks.processing.remove(&ev.entity);
             info!(entity = ?ev.entity)
         }
     });

@@ -87,23 +87,23 @@ pub struct CaveChunkOriginTask {
 impl CaveChunk {
     fn new(settings: &CaveChunkSettings, origin: Vec3, subdivisions: u32) -> Self {
         let sample_count = 2_usize.pow(subdivisions);
-        let half_voxel_size = settings.size * 0.5 / sample_count as f32;
+        let voxel_size = settings.size / sample_count as f32;
         info!(
             subdivisions = subdivisions,
             sample_count = sample_count,
-            voxel_size = half_voxel_size * 2.0
+            voxel_size = voxel_size
         );
 
         let (noise_samples, _min, _max) = simdnoise::NoiseBuilder::fbm_3d_offset(
-            origin.x * sample_count as f32 / settings.size + half_voxel_size,
+            origin.x / voxel_size,
             sample_count,
-            origin.y * sample_count as f32 / settings.size + half_voxel_size,
+            origin.y / voxel_size,
             sample_count,
-            origin.z * sample_count as f32 / settings.size + half_voxel_size,
+            origin.z / voxel_size,
             sample_count,
         )
         .with_seed(42)
-        .with_freq(settings.frequency * settings.size / sample_count as f32)
+        .with_freq(settings.frequency * voxel_size)
         .generate();
 
         CaveChunk {

@@ -72,6 +72,7 @@ fn spawn_voxelize_cave_chunk_task(
         let y_stride = sample_count;
         let z_stride = sample_count * y_stride;
 
+        let mut empty = true;
         for i in 0..shape.size() {
             let [x, y, z] = shape.delinearize(i);
             if x == 0
@@ -84,18 +85,20 @@ fn spawn_voxelize_cave_chunk_task(
                 voxels.push(BoolVoxel(false));
             } else {
                 let noise_index = (x - 1 + (y - 1) * y_stride + (z - 1) * z_stride) as usize;
-                voxels.push(BoolVoxel(
-                    noise_samples[noise_index as usize] > cave_chunk.settings.threshold,
-                ))
+                let value = noise_samples[noise_index as usize] > cave_chunk.settings.threshold;
+                empty = empty && !value;
+                voxels.push(BoolVoxel(value))
             }
         }
 
-        info!(entity = ?cave_chunk_entity, subdivisions = ?cave_chunk.subdivisions);
+
+        let data = if empty { None } else { Some(voxels) };
+        info!(entity = ?cave_chunk_entity, size = cave_chunk.settings.size, subdivisions = ?cave_chunk.subdivisions);
 
         Some(CaveChunkVoxelizedEvent {
             entity: cave_chunk_entity,
             voxels: CaveChunkVoxels {
-                voxels: Arc::new(RwLock::new(voxels)),
+                data: Arc::new(RwLock::new(data)),
                 shape,
             },
         })
@@ -125,7 +128,7 @@ fn handle_voxelize_cave_chunk_tasks(
 
 #[derive(Component, Clone)]
 pub struct CaveChunkVoxels {
-    pub voxels: Arc<RwLock<Vec<BoolVoxel>>>,
+    pub data: Arc<RwLock<Option<Vec<BoolVoxel>>>>,
     pub shape: RuntimeShape<u32, 3>,
 }
 

@@ -36,7 +36,8 @@ fn mesh_cave_chunk_voxels(
 }
 
 #[derive(Component, Deref, DerefMut)]
-struct MeshCaveChunkVoxelsTask(Task<Option<(Entity, CaveChunkVoxels, Mesh)>>);
+// struct MeshCaveChunkVoxelsTask(Task<Option<(Entity, CaveChunkVoxels, Mesh)>>);
+struct MeshCaveChunkVoxelsTask(Task<Option<(Entity, Option<Mesh>)>>);
 
 fn spawn_mesh_cave_chunk_voxels_task(
     task_pool: &AsyncComputeTaskPool,
@@ -44,12 +45,21 @@ fn spawn_mesh_cave_chunk_voxels_task(
     cave_chunk_voxels: CaveChunkVoxels,
 ) -> MeshCaveChunkVoxelsTask {
     MeshCaveChunkVoxelsTask(task_pool.spawn(async move {
-        let voxels = cave_chunk_voxels.voxels.try_read().ok()?;
+        let locked = cave_chunk_voxels.data.try_read().ok()?;
+        let voxels = if let Some(voxels) = &*locked {
+            voxels
+        } else {
+            return Some((
+                cave_chunk_entity,
+                // cave_chunk_voxels.clone(),
+                None,
+            ));
+        };
 
         let mut buffer = GreedyQuadsBuffer::new(voxels.len());
         let faces = RIGHT_HANDED_Y_UP_CONFIG.faces;
         greedy_quads(
-            &voxels,
+            voxels,
             &cave_chunk_voxels.shape,
             [0; 3],
             [cave_chunk_voxels.shape.as_array()[0] - 1; 3],
@@ -87,16 +97,16 @@ fn spawn_mesh_cave_chunk_voxels_task(
 
         Some((
             cave_chunk_entity,
-            cave_chunk_voxels.clone(),
-            cave_chunk_mesh,
+            // cave_chunk_voxels.clone(),
+            Some(cave_chunk_mesh),
         ))
     }))
 }
 
 pub struct CaveChunkVoxelsMeshedEvent {
     pub entity: Entity,
-    pub voxels: CaveChunkVoxels,
-    pub mesh: Handle<Mesh>,
+    // pub voxels: CaveChunkVoxels,
+    pub mesh: Option<Handle<Mesh>>,
 }
 
 fn handle_mesh_cave_chunk_voxels_tasks(
@@ -109,11 +119,12 @@ fn handle_mesh_cave_chunk_voxels_tasks(
         if let Some(result) = future::block_on(future::poll_once(&mut **cave_chunk_task)) {
             commands.entity(task_entity).despawn();
 
-            if let Some((entity, voxels, mesh)) = result {
+            // if let Some((entity, _voxels, mesh)) = result {
+            if let Some((entity, mesh)) = result {
                 events.send(CaveChunkVoxelsMeshedEvent {
                     entity,
-                    voxels,
-                    mesh: meshes.add(mesh),
+                    // voxels,
+                    mesh: mesh.map(|m| meshes.add(m)),
                 });
             }
         }
