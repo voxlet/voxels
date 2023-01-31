@@ -5,7 +5,6 @@ use crate::camera::CameraBundle;
 #[derive(Bundle)]
 pub struct PlayerBundle {
     player: Player,
-    #[bundle]
     camera: CameraBundle,
 }
 

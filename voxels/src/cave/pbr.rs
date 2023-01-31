@@ -22,7 +22,7 @@ pub fn insert_cave_chunk_pbr(
             let voxel_size = cave_chunk.settings.size / sample_count as f32;
 
             let pbr = commands
-                .spawn_bundle(PbrBundle {
+                .spawn(PbrBundle {
                     mesh: mesh.clone(),
                     material: cave_chunk.settings.material.clone(),
                     transform: Transform::from_translation(Vec3::splat(-1.0)),
@@ -31,8 +31,7 @@ pub fn insert_cave_chunk_pbr(
                 .id();
 
             let transform = commands
-                .spawn()
-                .insert_bundle(SpatialBundle {
+                .spawn(SpatialBundle {
                     transform: Transform::from_scale(Vec3::splat(voxel_size)),
                     ..default()
                 })

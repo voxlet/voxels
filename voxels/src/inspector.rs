@@ -12,7 +12,7 @@ use bevy_inspector_egui::{
 
 use crate::camera::CameraControlSettings;
 
-#[derive(Inspectable, Default, Debug)]
+#[derive(Resource, Inspectable, Default, Debug)]
 struct Inspector {
     camera_control_settings: ResourceInspector<CameraControlSettings>,
 }
@@ -90,11 +90,10 @@ fn diagnostic_ui(ui: &mut Ui, diagnostic: &Diagnostic, start_time: Instant) {
             .view_aspect(3.0)
             .include_y(0.0)
             .show(ui, |plot_ui| {
-                plot_ui.line(egui::plot::Line::new(egui::plot::Values::from_values_iter(
-                    diagnostic.measurements().map(|m| egui::plot::Value {
-                        x: m.time.duration_since(start_time).as_secs_f64(),
-                        y: m.value,
-                    }),
+                plot_ui.line(egui::plot::Line::new(egui::plot::PlotPoints::from_iter(
+                    diagnostic
+                        .measurements()
+                        .map(|m| [m.time.duration_since(start_time).as_secs_f64(), m.value]),
                 )))
             });
     }

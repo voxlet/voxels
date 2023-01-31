@@ -7,14 +7,14 @@ default-run = "voxels"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy-inspector-egui = "0.12"
-bevy_egui = "0.15"
+bevy-inspector-egui = "0.14"
+bevy_egui = "0.17"
 simdnoise = "3"
 block-mesh = "0.2"
 futures-lite = "1"
 
 [dependencies.bevy]
-version = "0.8"
+version = "0.9"
 # Disable the default features if there are any that you do not want
 default-features = false
 features = [

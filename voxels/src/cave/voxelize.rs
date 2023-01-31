@@ -43,7 +43,7 @@ fn voxelize_cave_chunks(
     let task_pool = AsyncComputeTaskPool::get();
     events.iter().for_each(|ev| {
         if let Ok(cave_chunk) = query.get(ev.entity) {
-            commands.spawn().insert(spawn_voxelize_cave_chunk_task(
+            commands.spawn_empty().insert(spawn_voxelize_cave_chunk_task(
                 task_pool,
                 ev.entity,
                 cave_chunk.clone(),

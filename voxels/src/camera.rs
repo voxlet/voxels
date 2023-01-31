@@ -19,7 +19,7 @@ impl Plugin for CameraPlugin {
     }
 }
 
-#[derive(Reflect, Inspectable, Debug, Default)]
+#[derive(Resource, Reflect, Inspectable, Debug, Default)]
 pub struct CameraControlSettings {
     pub rotate_sensitivity: f32,
     pub move_speed: f32,
@@ -28,7 +28,6 @@ pub struct CameraControlSettings {
 
 #[derive(Bundle)]
 pub struct CameraBundle {
-    #[bundle]
     camera: Camera3dBundle,
     controller: CameraController,
 }

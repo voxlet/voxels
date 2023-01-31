@@ -7,12 +7,14 @@ mod player;
 
 fn main() {
     App::new()
-        .insert_resource(WindowDescriptor {
-            width: 960.0,
-            height: 540.0,
-            ..Default::default()
-        })
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            window: WindowDescriptor {
+                width: 960.0,
+                height: 540.0,
+                ..default()
+            },
+            ..default()
+        }))
         .add_plugin(diagnostic::FrameTimeDiagnosticsPlugin::default())
         // .add_plugin(diagnostic::LogDiagnosticsPlugin::default())
         // .add_plugin(WireframePlugin)
@@ -29,7 +31,7 @@ fn setup(mut commands: Commands) {
         brightness: 0.1,
         ..default()
     });
-    commands.spawn_bundle(PointLightBundle {
+    commands.spawn(PointLightBundle {
         transform: Transform::from_translation(Vec3::new(10.0, 30.0, 10.0)),
         point_light: PointLight {
             intensity: 200000.,
@@ -41,7 +43,7 @@ fn setup(mut commands: Commands) {
     });
 
     // player
-    commands.spawn_bundle(player::PlayerBundle::new(
+    commands.spawn(player::PlayerBundle::new(
         Vec3::new(0.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, -10.0),
     ));

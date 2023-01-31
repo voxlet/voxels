@@ -27,11 +27,13 @@ fn mesh_cave_chunk_voxels(
 ) {
     let task_pool = AsyncComputeTaskPool::get();
     events.iter().for_each(|ev| {
-        commands.spawn().insert(spawn_mesh_cave_chunk_voxels_task(
-            task_pool,
-            ev.entity,
-            ev.voxels.clone(),
-        ));
+        commands
+            .spawn_empty()
+            .insert(spawn_mesh_cave_chunk_voxels_task(
+                task_pool,
+                ev.entity,
+                ev.voxels.clone(),
+            ));
     })
 }
 

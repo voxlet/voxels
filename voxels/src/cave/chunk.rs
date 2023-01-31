@@ -7,7 +7,7 @@ pub struct CaveChunkPlugin;
 impl Plugin for CaveChunkPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<ReadyEvent>();
-        app.add_startup_system(insert_settings.exclusive_system());
+        app.add_startup_system(insert_settings);
     }
 }
 
@@ -45,7 +45,7 @@ pub fn insert_settings(world: &mut World) {
     // ready_event.send(ReadyEvent { settings });
 }
 
-#[derive(Debug, Clone)]
+#[derive(Resource, Debug, Clone)]
 pub struct CaveChunkSettings {
     pub size: f32,
     pub threshold: f32,
@@ -55,7 +55,6 @@ pub struct CaveChunkSettings {
 
 #[derive(Bundle)]
 pub struct CaveChunkBundle {
-    #[bundle]
     pub spatial: SpatialBundle,
     pub cave_chunk: CaveChunk,
 }

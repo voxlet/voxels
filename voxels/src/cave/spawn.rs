@@ -13,7 +13,7 @@ impl Plugin for CaveSpawnPlugin {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Resource, Default, Debug)]
 pub struct SpawnedCaveChunks {
     pub processing: HashSet<Entity>,
 }
@@ -41,7 +41,7 @@ fn handle_spawn_cave_chunk_tasks(
         if let Some(cave_chunk_bundle) = future::block_on(future::poll_once(&mut **cave_chunk_task))
         {
             let subdivisions = cave_chunk_bundle.cave_chunk.subdivisions;
-            let cave_chunk_entity = commands.spawn_bundle(cave_chunk_bundle).id();
+            let cave_chunk_entity = commands.spawn(cave_chunk_bundle).id();
             spawned_cave_chunks.processing.insert(cave_chunk_entity);
 
             commands.entity(task_entity).despawn();

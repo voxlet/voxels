@@ -68,7 +68,7 @@ fn test_spawn(
                         return;
                     }
 
-                    commands.spawn().insert(spawn::spawn_cave_chunk_task(
+                    commands.spawn_empty().insert(spawn::spawn_cave_chunk_task(
                         task_pool,
                         chunk::CaveChunkSettings {
                             size,
@@ -87,7 +87,7 @@ fn test_spawn(
 
 fn spawn_around_player(
     mut events: EventReader<CameraControlEvent>,
-    player: Query<&GlobalTransform, (With<Player>, Changed<Transform>)>,
+    player: Query<&GlobalTransform, (With<Player>, Changed<GlobalTransform>)>,
 ) {
     let player = if let Ok(player) = player.get_single() {
         player
