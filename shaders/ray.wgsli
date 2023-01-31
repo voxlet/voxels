@@ -1,0 +1,24 @@
+#include "compute_globals.wgsli"
+
+struct Ray {
+    origin: vec3<f32>;
+    direction: vec3<f32>;
+    inv_direction: vec3<f32>;
+};
+
+fn ray_from(origin: vec3<f32>, direction: vec3<f32>) -> Ray {
+    var ray: Ray;
+    ray.origin = origin;
+    ray.direction = normalize(direction);
+    ray.inv_direction = 1.0 / ray.direction;
+    return ray;
+}
+
+fn ray_for(gid: vec3<u32>) -> Ray {
+    var xy: vec2<f32> = vec2<f32>(gid.xy) / state.resolution * 2.0 - vec2<f32>(1.0, 1.0);
+    xy.x = xy.x * state.resolution.x / state.resolution.y;
+    return ray_from(
+        state.camera_position,
+        state.camera_rotation * vec3<f32>(xy, 1.0)
+    );
+}

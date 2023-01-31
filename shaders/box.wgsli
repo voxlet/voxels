@@ -1,0 +1,55 @@
+#include "compute_globals.wgsli"
+#include "ray.wgsli"
+
+struct Box {
+    center: vec3<f32>;
+    radius: vec3<f32>;
+    inv_radius: vec3<f32>;
+};
+
+fn box_at(point: vec3<f32>, mip_level: u32) -> Box {
+    var box: Box;
+    box.radius = voxel_radius[mip_level];
+    box.inv_radius = voxel_inv_radius[mip_level];
+
+    let box_size = box.radius * 2.0;
+    box.center = floor(point / box_size) * box_size + box.radius;
+
+    return box;
+}
+
+struct Intersection {
+    distance: f32;
+    normal: vec3<f32>;
+};
+
+fn intersect(ray: Ray, box: Box) -> Intersection {
+    let origin = ray.origin - box.center;
+
+    var sgn: vec3<f32> = -sign(ray.direction);
+    let distance_to_plane =
+        (-box.radius * sgn - origin) * ray.inv_direction;
+
+    let test: vec3<bool> = vec3<bool>(
+        (distance_to_plane.x >= 0.0) &&
+        all(abs(origin.yz + ray.direction.yz * distance_to_plane.x) < box.radius.yz),
+        (distance_to_plane.y >= 0.0) &&
+        all(abs(origin.zx + ray.direction.zx * distance_to_plane.y) < box.radius.zx),
+        (distance_to_plane.z >= 0.0) &&
+        all(abs(origin.xy + ray.direction.xy * distance_to_plane.z) < box.radius.xy),
+    );
+
+    sgn = select(sgn, vec3<f32>(0.0, 0.0, 0.0), test);
+
+    let dist = select(
+        distance_to_plane.x,
+        select(
+            distance_to_plane.y,
+            distance_to_plane.z,
+            sgn.y != 0.0
+        ),
+        sgn.x != 0.0
+    );
+
+    return Intersection(dist, sgn);
+}

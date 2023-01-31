@@ -24,7 +24,7 @@ pub struct Camera {
 }
 
 fn rotation(yaw: f32, pitch: f32) -> glam::Mat3 {
-    glam::Mat3::from_rotation_ypr(yaw, pitch, 0.0)
+    glam::Mat3::from_euler(glam::EulerRot::YXZ, yaw, pitch, 0.0)
 }
 
 impl Camera {

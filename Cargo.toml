@@ -15,7 +15,7 @@ tracing = "0.1"
 tracing-subscriber = "0.2"
 futures-lite = "1"
 bytemuck = { version = "1", features = ["derive"] }
-glam = "0.14"
+glam = "0.15"
 simdnoise = "3"
 rayon = "1"
 egui = "0.12"
