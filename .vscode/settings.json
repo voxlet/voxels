@@ -1,0 +1,22 @@
+{
+  "cSpell.words": [
+    "Bgra",
+    "Itoh",
+    "Masaru",
+    "Rgba",
+    "Srgb",
+    "Unorm",
+    "Vulkan",
+    "blit",
+    "bytemuck",
+    "multisample",
+    "shaderc",
+    "spirv",
+    "voxels",
+    "wgpu",
+    "winit"
+  ],
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": true,
+  "editor.formatOnType": true
+}
