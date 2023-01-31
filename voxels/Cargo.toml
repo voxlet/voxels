@@ -10,6 +10,7 @@ default-run = "voxels"
 smooth-bevy-cameras = "0.2"
 bevy-inspector-egui = "0.8"
 bevy_egui = "0.11"
+simdnoise = "3"
 
 [dependencies.bevy]
 version = "0.6"
@@ -23,7 +24,7 @@ features = [
     "bevy_gilrs",
     # "bevy_audio",
     # "png",
-    # "hdr",
+    "hdr",
     # "vorbis",
     # "x11",
     "filesystem_watcher",
