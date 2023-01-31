@@ -35,8 +35,8 @@ pub fn insert_settings(
     // });
 
     let settings = CaveChunkSettings {
-        size: 12.8,
-        max_subdivisions: 9,
+        size: 655.36,
+        max_subdivisions: 5,
         threshold: 0.04,
         frequency: 0.15,
         material,
