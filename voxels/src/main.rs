@@ -19,10 +19,10 @@ fn main() {
 fn setup(mut commands: Commands) {
     // light
     commands.spawn_bundle(PointLightBundle {
-        transform: Transform::from_translation(Vec3::new(50.0, 50.0, 50.0)),
+        transform: Transform::from_translation(Vec3::new(0.0, 100.0, 0.0)),
         point_light: PointLight {
             intensity: 600000.,
-            range: 100.,
+            range: 1000.,
             ..Default::default()
         },
         ..Default::default()
