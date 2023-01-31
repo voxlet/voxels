@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 pub struct Compute {
     pipeline: wgpu::ComputePipeline,
     bind_group_layout: wgpu::BindGroupLayout,
@@ -5,23 +7,24 @@ pub struct Compute {
 
 impl Compute {
     pub fn new(device: &wgpu::Device) -> Self {
-        let compute_shader_text = include_str!("shader.comp");
-        let mut shader_compiler = shaderc::Compiler::new().unwrap();
-        let compute_shader_bin = shader_compiler
-            .compile_into_spirv(
-                compute_shader_text,
-                shaderc::ShaderKind::Compute,
-                "shader.comp",
-                "main",
-                None,
-            )
-            .unwrap();
-        let compute_shader_source = wgpu::util::make_spirv(compute_shader_bin.as_binary_u8());
+        // let compute_shader_text = include_str!("shader.comp");
+        // let mut shader_compiler = shaderc::Compiler::new().unwrap();
+        // let compute_shader_bin = shader_compiler
+        //     .compile_into_spirv(
+        //         compute_shader_text,
+        //         shaderc::ShaderKind::Compute,
+        //         "shader.comp",
+        //         "main",
+        //         None,
+        //     )
+        //     .unwrap();
+        // let compute_shader_source = wgpu::util::make_spirv(compute_shader_bin.as_binary_u8());
 
         let compute_shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("Compute Shader"),
             flags: wgpu::ShaderFlags::default(),
-            source: compute_shader_source,
+            // source: compute_shader_source,
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("compute.wgsl"))),
         });
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
