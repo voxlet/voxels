@@ -1,8 +1,4 @@
-use crate::{
-    gpu::Gpu,
-    state,
-    ui::{self, AppEvent, Ui},
-};
+use crate::{gpu::Gpu, state, ui};
 
 use winit::{
     dpi::PhysicalSize,
@@ -26,27 +22,20 @@ pub fn update(state: &mut State, gpu: &mut Gpu) {
 pub fn render(
     state: &mut State,
     gpu: &mut Gpu,
-    ui: &mut Option<Ui>,
-    control_flow: &mut ControlFlow,
-) {
-    match gpu.get_current_frame() {
-        // Recreate the swap_chain if lost
-        Err(wgpu::SwapChainError::Lost) => resize(state, gpu, state.size, state.scale_factor),
-        // The system is out of memory, we should probably quit
-        Err(wgpu::SwapChainError::OutOfMemory) => *control_flow = ControlFlow::Exit,
-        // All other errors (Outdated, Timeout) should be resolved by the next frame
-        Err(e) => eprintln!("{:?}", e),
-        Ok(frame) => {
-            gpu.render(&frame);
-            if let Some(ui) = ui {
-                ui.render(&frame, gpu, state);
-            }
-        }
-    }
+    ui: &mut Option<ui::Ui>,
+) -> Result<(), wgpu::SwapChainError> {
+    let frame = gpu.get_current_frame()?;
+    let mut render_encoder = gpu.render(&frame);
+    if let Some(ui) = ui {
+        ui.render(&frame, gpu, state, &mut render_encoder);
+    };
+    gpu.queue.submit(std::iter::once(render_encoder.finish()));
+
+    Ok(())
 }
 
 pub async fn run() {
-    let event_loop: EventLoop<AppEvent> = EventLoop::with_user_event();
+    let event_loop: EventLoop<ui::AppEvent> = EventLoop::with_user_event();
     let window = WindowBuilder::new()
         .with_inner_size(PhysicalSize::new(1920, 1080))
         .build(&event_loop)
@@ -54,15 +43,12 @@ pub async fn run() {
 
     let mut state = State::new(&window);
     let mut gpu = Gpu::new(&window, &state.camera).await;
-    let mut ui: Option<Ui> = None;
+    let mut ui: Option<ui::Ui> = None;
     let repaint_signal = ui::repaint_signal(&event_loop);
 
     event_loop.run(move |event, _, control_flow| {
         if let Some(ui) = ui.as_mut() {
-            ui.platform.handle_event(&event);
-            if ui.platform.captures_event(&event) {
-                return;
-            }
+            ui.handle_event(&event);
         }
 
         match event {
@@ -92,7 +78,7 @@ pub async fn run() {
                 } => {
                     if let None = ui {
                         state::grab_cursor(&window, false);
-                        ui = Some(Ui::new(&window, repaint_signal.clone(), &state, &gpu))
+                        ui = Some(ui::Ui::new(&window, repaint_signal.clone(), &state, &gpu));
                     } else {
                         state::grab_cursor(&window, true);
                         ui = None;
@@ -102,7 +88,21 @@ pub async fn run() {
             },
             Event::RedrawRequested(_) => {
                 update(&mut state, &mut gpu);
-                render(&mut state, &mut gpu, &mut ui, control_flow);
+            }
+            Event::RedrawEventsCleared => {
+                match render(&mut state, &mut gpu, &mut ui) {
+                    // Recreate the swap_chain if lost
+                    Err(wgpu::SwapChainError::Lost) => {
+                        let size = state.size;
+                        let scale_factor = state.scale_factor;
+                        resize(&mut state, &mut gpu, size, scale_factor)
+                    }
+                    // The system is out of memory, we should probably quit
+                    Err(wgpu::SwapChainError::OutOfMemory) => *control_flow = ControlFlow::Exit,
+                    // All other errors (Outdated, Timeout) should be resolved by the next frame
+                    Err(e) => eprintln!("{:?}", e),
+                    _ => {}
+                }
             }
             Event::MainEventsCleared => {
                 // RedrawRequested will only trigger once, unless we manually

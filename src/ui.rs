@@ -73,7 +73,18 @@ impl Ui {
         }
     }
 
-    pub fn render(&mut self, frame: &SwapChainTexture, gpu: &Gpu, state: &mut State) {
+    pub fn handle_event<T>(&mut self, event: &winit::event::Event<T>) -> bool {
+        self.platform.handle_event(event);
+        self.platform.captures_event(event)
+    }
+
+    pub fn render(
+        &mut self,
+        frame: &SwapChainTexture,
+        gpu: &Gpu,
+        state: &mut State,
+        render_encoder: &mut wgpu::CommandEncoder,
+    ) {
         self.platform
             .update_time(self.start_time.elapsed().as_secs_f64());
 
@@ -107,12 +118,6 @@ impl Ui {
         let frame_time = (Instant::now() - egui_start).as_secs_f64() as f32;
         self.previous_frame_time = Some(frame_time);
 
-        let mut encoder = gpu
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("UI Encoder"),
-            });
-
         // Upload all resources for the GPU.
         let screen_descriptor = ScreenDescriptor {
             physical_width: gpu.swap_chain_desc.width,
@@ -128,14 +133,11 @@ impl Ui {
 
         // Record all render passes.
         self.render_pass.execute(
-            &mut encoder,
+            render_encoder,
             &frame.view,
             &paint_jobs,
             &screen_descriptor,
             None,
         );
-
-        // Submit the commands.
-        gpu.queue.submit(std::iter::once(encoder.finish()));
     }
 }
