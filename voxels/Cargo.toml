@@ -9,7 +9,7 @@ default-run = "voxels"
 [dependencies]
 bevy-inspector-egui = "0.14"
 bevy_egui = "0.17"
-simdnoise = "3"
+simdnoise = { git = "https://github.com/jackmott/rust-simd-noise" }
 block-mesh = "0.2"
 futures-lite = "1"
 
