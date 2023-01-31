@@ -3,6 +3,7 @@ name = "voxels"
 version = "0.1.0"
 publish = false
 edition = "2018"
+default-run = "voxels"
 
 [profile.dev.package."*"]
 opt-level = 3
@@ -23,3 +24,4 @@ egui_wgpu_backend = "0.8"
 egui_winit_platform = "0.7"
 regex = "1"
 lazy_static = "1"
+naga = "0.4"
