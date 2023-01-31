@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use bevy::{input::mouse::MouseMotion, math::Vec2Swizzles, prelude::*};
 use bevy_inspector_egui::Inspectable;
 
@@ -49,8 +51,8 @@ impl CameraBundle {
 struct CameraController {}
 
 pub struct CameraControlEvent {
-    pub rotation_delta: Vec2,
-    pub translation_delta: Vec3,
+    pub delta_rotation: Vec2,
+    pub delta_translation: Vec3,
 }
 
 fn input(
@@ -59,11 +61,11 @@ fn input(
     mut mouse_events: EventReader<MouseMotion>,
     mut control_events: EventWriter<CameraControlEvent>,
 ) {
-    let rotation_delta = (mouse_events.iter().fold(Vec2::ZERO, |z, ev| z - ev.delta)
+    let delta_rotation = (mouse_events.iter().fold(Vec2::ZERO, |z, ev| z - ev.delta)
         * settings.rotate_sensitivity)
         .yx();
 
-    let mut translation_delta = keys.get_pressed().fold(Vec3::ZERO, |z, keycode| {
+    let mut delta_translation = keys.get_pressed().fold(Vec3::ZERO, |z, keycode| {
         z + match keycode {
             KeyCode::W => -Vec3::Z,
             KeyCode::A => -Vec3::X,
@@ -74,8 +76,8 @@ fn input(
             _ => Vec3::ZERO,
         }
     });
-    if translation_delta != Vec3::ZERO {
-        translation_delta = translation_delta.normalize()
+    if delta_translation != Vec3::ZERO {
+        delta_translation = delta_translation.normalize()
             * if keys.pressed(KeyCode::LShift) {
                 settings.move_speed * settings.sprint_factor
             } else {
@@ -83,10 +85,10 @@ fn input(
             };
     }
 
-    if rotation_delta != Vec2::ZERO || translation_delta != Vec3::ZERO {
+    if delta_rotation != Vec2::ZERO || delta_translation != Vec3::ZERO {
         control_events.send(CameraControlEvent {
-            rotation_delta,
-            translation_delta,
+            delta_rotation,
+            delta_translation,
         })
     }
 }
@@ -97,10 +99,12 @@ fn control(
 ) {
     for ev in events.iter() {
         cameras.for_each_mut(|(_, mut tr)| {
-            tr.rotate_y(ev.rotation_delta.y);
-            tr.rotate_local_x(ev.rotation_delta.x);
-            let rotation = tr.rotation;
-            tr.translation += rotation * ev.translation_delta;
+            tr.rotate_y(ev.delta_rotation.y);
+            let max_drx = tr.forward().angle_between(Vec3::Y);
+            tr.rotate_local_x(ev.delta_rotation.x.clamp(max_drx - PI, max_drx));
+
+            let dtl = tr.rotation * ev.delta_translation;
+            tr.translation += dtl;
         })
     }
 }

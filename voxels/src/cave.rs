@@ -95,7 +95,7 @@ fn spawn_around_player(
         return;
     };
 
-    let moved = events.iter().any(|ev| ev.translation_delta != Vec3::ZERO);
+    let moved = events.iter().any(|ev| ev.delta_translation != Vec3::ZERO);
     if !moved {
         return;
     }
