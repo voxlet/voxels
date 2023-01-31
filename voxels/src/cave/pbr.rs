@@ -1,8 +1,9 @@
 use bevy::prelude::*;
 
-use super::{chunk::CaveChunk, mesh::CaveChunkVoxelsMeshedEvent};
+use super::{chunk::CaveChunk, mesh::CaveChunkVoxelsMeshedEvent, spawn::SpawnedCaveChunks};
 
 pub fn insert_cave_chunk_pbr(
+    mut spawned_cave_chunks: ResMut<SpawnedCaveChunks>,
     mut commands: Commands,
     mut events: EventReader<CaveChunkVoxelsMeshedEvent>,
     query: Query<&CaveChunk>,
@@ -31,6 +32,8 @@ pub fn insert_cave_chunk_pbr(
                 .id();
 
             commands.entity(ev.entity).add_child(transform);
+
+            spawned_cave_chunks.processing.remove(&ev.entity);
             info!(entity = ?ev.entity)
         }
     });

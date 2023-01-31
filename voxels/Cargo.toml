@@ -7,7 +7,6 @@ default-run = "voxels"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-smooth-bevy-cameras = { git = "https://github.com/bonsairobo/smooth-bevy-cameras.git" }
 bevy-inspector-egui = "0.12"
 bevy_egui = "0.15"
 simdnoise = "3"

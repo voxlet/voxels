@@ -7,19 +7,19 @@ pub struct CaveChunkPlugin;
 impl Plugin for CaveChunkPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<ReadyEvent>();
-        app.add_startup_system(insert_settings);
+        app.add_startup_system(insert_settings.exclusive_system());
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct ReadyEvent {
     pub settings: CaveChunkSettings,
 }
 
-pub fn insert_settings(
-    mut commands: Commands,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    mut ready_event: EventWriter<ReadyEvent>,
-) {
+pub fn insert_settings(world: &mut World) {
+    let mut materials = world
+        .get_resource_mut::<Assets<StandardMaterial>>()
+        .unwrap();
     let material = materials.add(StandardMaterial {
         base_color: Color::hex("ffd891").unwrap(),
         metallic: 0.5,
@@ -40,9 +40,9 @@ pub fn insert_settings(
         frequency: 0.15,
         material,
     };
-    commands.insert_resource(settings.clone());
+    world.insert_resource(settings);
 
-    ready_event.send(ReadyEvent { settings });
+    // ready_event.send(ReadyEvent { settings });
 }
 
 #[derive(Debug, Clone)]
@@ -77,6 +77,11 @@ pub struct CaveChunk {
     pub subdivisions: u32,
     pub noise_samples: Arc<RwLock<Vec<f32>>>,
     pub settings: CaveChunkSettings,
+}
+
+#[derive(Component, Debug)]
+pub struct CaveChunkOriginTask {
+    pub task_entity: Entity,
 }
 
 impl CaveChunk {

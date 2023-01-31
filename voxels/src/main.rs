@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{diagnostic, prelude::*};
 
 mod camera;
 mod cave;
@@ -13,7 +13,7 @@ fn main() {
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
-        // .add_plugin(diagnostic::FrameTimeDiagnosticsPlugin::default())
+        .add_plugin(diagnostic::FrameTimeDiagnosticsPlugin::default())
         // .add_plugin(diagnostic::LogDiagnosticsPlugin::default())
         // .add_plugin(WireframePlugin)
         .add_plugin(inspector::InspectorPlugin)

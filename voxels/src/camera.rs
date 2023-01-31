@@ -1,134 +1,105 @@
-use bevy::{input::mouse::MouseMotion, prelude::*};
-use smooth_bevy_cameras::{
-    controllers::fps::{ControlEvent, FpsCameraController},
-    LookAngles, LookTransform, LookTransformBundle, LookTransformPlugin, Smoother,
-};
+use bevy::{input::mouse::MouseMotion, math::Vec2Swizzles, prelude::*};
 
 pub struct CameraPlugin;
 
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(LookTransformPlugin)
-            .add_event::<ControlEvent>()
-            .add_system(control_system)
-            .add_system(input_map);
+        app.register_type::<CameraControlSettings>()
+            .insert_resource(CameraControlSettings {
+                rotate_sensitivity: 0.002,
+                move_speed: 0.1,
+                sprint_factor: 10.0,
+            })
+            .add_event::<CameraControlEvent>()
+            .add_system(input)
+            .add_system(control);
     }
+}
+
+#[derive(Reflect)]
+pub struct CameraControlSettings {
+    pub rotate_sensitivity: f32,
+    pub move_speed: f32,
+    pub sprint_factor: f32,
 }
 
 #[derive(Bundle)]
 pub struct CameraBundle {
     #[bundle]
     camera: Camera3dBundle,
-    controller: FpsCameraController,
-    #[bundle]
-    look_transform: LookTransformBundle,
+    controller: CameraController,
 }
 
 impl CameraBundle {
-    pub fn new(eye: Vec3, look_target: Vec3, smoothing_weight: f32) -> Self {
-        // Make sure the transform is consistent with the controller to start.
+    pub fn new(eye: Vec3, look_target: Vec3) -> Self {
         let transform = Transform::from_translation(eye).looking_at(look_target, Vec3::Y);
+
         Self {
             camera: Camera3dBundle {
                 transform,
                 ..default()
             },
-            controller: FpsCameraController {
-                smoothing_weight,
-                ..default()
-            },
-            look_transform: LookTransformBundle {
-                transform: LookTransform::new(eye, look_target),
-                smoother: Smoother::new(smoothing_weight),
-            },
+            controller: CameraController {},
         }
     }
 }
 
-pub fn input_map(
-    mut events: EventWriter<ControlEvent>,
-    keyboard: Res<Input<KeyCode>>,
-    mut mouse_motion_events: EventReader<MouseMotion>,
-    controllers: Query<&FpsCameraController>,
+#[derive(Component, Reflect, Debug)]
+struct CameraController {}
+
+pub struct CameraControlEvent {
+    pub rotation_delta: Vec2,
+    pub translation_delta: Vec3,
+}
+
+fn input(
+    settings: Res<CameraControlSettings>,
+    keys: Res<Input<KeyCode>>,
+    mut mouse_events: EventReader<MouseMotion>,
+    mut control_events: EventWriter<CameraControlEvent>,
 ) {
-    // Can only control one camera at a time.
-    let controller = if let Some(controller) = controllers.iter().find(|c| c.enabled) {
-        controller
-    } else {
-        return;
-    };
-    let FpsCameraController {
-        translate_sensitivity,
-        mouse_rotate_sensitivity,
-        ..
-    } = *controller;
+    let rotation_delta = (mouse_events.iter().fold(Vec2::ZERO, |z, ev| z - ev.delta)
+        * settings.rotate_sensitivity)
+        .yx();
 
-    let mut cursor_delta = Vec2::ZERO;
-    for event in mouse_motion_events.iter() {
-        cursor_delta += event.delta;
-    }
-
-    if cursor_delta != Vec2::ZERO {
-        events.send(ControlEvent::Rotate(
-            mouse_rotate_sensitivity * cursor_delta,
-        ));
-    }
-
-    for (key, dir) in [
-        (KeyCode::W, Vec3::Z),
-        (KeyCode::A, Vec3::X),
-        (KeyCode::S, -Vec3::Z),
-        (KeyCode::D, -Vec3::X),
-        (KeyCode::LShift, -Vec3::Y),
-        (KeyCode::Space, Vec3::Y),
-    ]
-    .iter()
-    .cloned()
-    {
-        if keyboard.pressed(key) {
-            events.send(ControlEvent::TranslateEye(translate_sensitivity * dir));
+    let mut translation_delta = keys.get_pressed().fold(Vec3::ZERO, |z, keycode| {
+        z + match keycode {
+            KeyCode::W => -Vec3::Z,
+            KeyCode::A => -Vec3::X,
+            KeyCode::S => Vec3::Z,
+            KeyCode::D => Vec3::X,
+            KeyCode::LControl => -Vec3::Y,
+            KeyCode::Space => Vec3::Y,
+            _ => Vec3::ZERO,
         }
+    });
+    if translation_delta != Vec3::ZERO {
+        translation_delta = translation_delta.normalize()
+            * if keys.pressed(KeyCode::LShift) {
+                settings.move_speed * settings.sprint_factor
+            } else {
+                settings.move_speed
+            };
+    }
+
+    if rotation_delta != Vec2::ZERO || translation_delta != Vec3::ZERO {
+        control_events.send(CameraControlEvent {
+            rotation_delta,
+            translation_delta,
+        })
     }
 }
 
-pub fn control_system(
-    mut events: EventReader<ControlEvent>,
-    mut cameras: Query<(&FpsCameraController, &mut LookTransform)>,
+fn control(
+    mut events: EventReader<CameraControlEvent>,
+    mut cameras: Query<(&CameraController, &mut Transform)>,
 ) {
-    let events = events.iter();
-
-    for event in events {
-        // Can only control one camera at a time.
-        let (controller, mut transform) = cameras.single_mut();
-        if !controller.enabled {
-            error!("no camera controller");
-            return;
-        }
-        let look_vector = if let Some(look_vector) = transform.look_direction() {
-            look_vector
-        } else {
-            warn!("no look vector");
-            return;
-        };
-        let mut look_angles = LookAngles::from_vector(look_vector);
-
-        match event {
-            ControlEvent::Rotate(delta) => {
-                // Rotates with pitch and yaw.
-                look_angles.add_yaw(-delta.x);
-                look_angles.add_pitch(-delta.y);
-            }
-            ControlEvent::TranslateEye(delta) => {
-                let rot = Quat::from_euler(
-                    EulerRot::YXZ,
-                    look_angles.get_yaw(),
-                    -look_angles.get_pitch(),
-                    0.0,
-                );
-                transform.eye += rot * *delta;
-            }
-        }
-        look_angles.assert_not_looking_up();
-        transform.target = transform.eye + transform.radius() * look_angles.unit_vector();
+    for ev in events.iter() {
+        cameras.for_each_mut(|(_, mut tr)| {
+            tr.rotate_y(ev.rotation_delta.y);
+            tr.rotate_local_x(ev.rotation_delta.x);
+            let rotation = tr.rotation;
+            tr.translation += rotation * ev.translation_delta;
+        })
     }
 }

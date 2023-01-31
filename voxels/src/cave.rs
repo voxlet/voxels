@@ -1,8 +1,10 @@
 use bevy::{prelude::*, tasks::AsyncComputeTaskPool};
-use smooth_bevy_cameras::controllers::fps::ControlEvent;
-use smooth_bevy_cameras::LookTransform;
 
+use crate::camera::CameraControlEvent;
 use crate::player::Player;
+
+use self::chunk::CaveChunkSettings;
+use self::spawn::SpawnedCaveChunks;
 
 mod chunk;
 mod mesh;
@@ -20,61 +22,72 @@ impl Plugin for CavePlugin {
             .add_plugin(mesh::MeshCaveChunkPlugin)
             .add_system(pbr::insert_cave_chunk_pbr)
             .add_system(spawn_around_player)
-            .add_system(test_spawn);
+            .add_startup_system(test_spawn);
     }
 }
 
-fn test_spawn(mut commands: Commands, mut ready_event: EventReader<chunk::ReadyEvent>) {
-    ready_event.iter().for_each(|ready_event| {
-        let settings = &ready_event.settings;
-        let task_pool = AsyncComputeTaskPool::get();
+fn test_spawn(
+    spawned_cave_chunks: Res<SpawnedCaveChunks>,
+    settings: Res<CaveChunkSettings>,
+    mut commands: Commands,
+) {
+    let task_pool = AsyncComputeTaskPool::get();
 
-        let chunk_size: f32 = 0.64;
-        let subdivisions = 5;
-        let max_lod = 4;
-        let max_y = chunk_size * 2_i32.pow(max_lod) as f32;
-        let min_y = -max_y;
+    let max_lod = 7;
+    // let chunk_size: f32 = 0.64;
+    // let subdivisions = 5;
+    // let chunk_count = 16;
+    let chunk_size: f32 = 1.28;
+    let subdivisions = 6;
+    let chunk_count = 8;
 
-        let inner_range = -4..4;
-        for level in 0..=max_lod {
-            for x in -8..8 {
-                for y in -8..8 {
-                    for z in -8..8 {
-                        if level != 0
-                            && inner_range.contains(&x)
-                            && inner_range.contains(&y)
-                            && inner_range.contains(&z)
-                        {
-                            continue;
-                        }
+    let range = -chunk_count / 2..chunk_count / 2;
+    let max_y = chunk_size * 2_i32.pow(max_lod) as f32;
+    let min_y = -max_y;
 
-                        let size = chunk_size * 2_i32.pow(level) as f32;
-                        let origin = Vec3::new(x as f32, y as f32, z as f32) * size;
-                        if origin.y < min_y || origin.y + size > max_y {
-                            continue;
-                        }
-
-                        commands.spawn().insert(spawn::spawn_cave_chunk_task(
-                            task_pool,
-                            chunk::CaveChunkSettings {
-                                size,
-                                threshold: 0.04,
-                                frequency: 0.15,
-                                material: settings.material.clone(),
-                            },
-                            origin,
-                            subdivisions,
-                        ));
+    let inner_range = -chunk_count / 4..chunk_count / 4;
+    for lod in 0..=max_lod {
+        for x in range.clone() {
+            for y in range.clone() {
+                for z in range.clone() {
+                    if lod != 0
+                        && inner_range.contains(&x)
+                        && inner_range.contains(&y)
+                        && inner_range.contains(&z)
+                    {
+                        continue;
                     }
+
+                    let size = chunk_size * 2_i32.pow(lod) as f32;
+                    let origin = Vec3::new(x as f32, y as f32, z as f32) * size;
+                    if origin.y < min_y || origin.y + size > max_y {
+                        continue;
+                    }
+
+                    if spawned_cave_chunks.processing.len() >= task_pool.thread_num() {
+                        return;
+                    }
+
+                    commands.spawn().insert(spawn::spawn_cave_chunk_task(
+                        task_pool,
+                        chunk::CaveChunkSettings {
+                            size,
+                            threshold: 0.04,
+                            frequency: 0.15,
+                            material: settings.material.clone(),
+                        },
+                        origin,
+                        subdivisions,
+                    ));
                 }
             }
         }
-    });
+    }
 }
 
 fn spawn_around_player(
-    mut events: EventReader<ControlEvent>,
-    player: Query<&GlobalTransform, (With<Player>, Changed<LookTransform>)>,
+    mut events: EventReader<CameraControlEvent>,
+    player: Query<&GlobalTransform, (With<Player>, Changed<Transform>)>,
 ) {
     let player = if let Ok(player) = player.get_single() {
         player
@@ -82,18 +95,7 @@ fn spawn_around_player(
         return;
     };
 
-    let mut moved = false;
-    for ev in events.iter() {
-        // add more as needed
-        #[allow(clippy::single_match)]
-        match ev {
-            &ControlEvent::TranslateEye(_) => {
-                moved = true;
-                break;
-            }
-            _ => {}
-        }
-    }
+    let moved = events.iter().any(|ev| ev.translation_delta != Vec3::ZERO);
     if !moved {
         return;
     }

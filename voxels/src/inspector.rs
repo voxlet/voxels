@@ -6,7 +6,6 @@ use bevy::{
 };
 use bevy_egui::{egui, EguiContext};
 use bevy_inspector_egui::{egui::Ui, WorldInspectorParams};
-use smooth_bevy_cameras::controllers::fps::FpsCameraController;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 enum InspectorState {
@@ -91,27 +90,14 @@ fn diagnostic_ui(ui: &mut Ui, diagnostic: &Diagnostic, start_time: Instant) {
     ui.end_row();
 }
 
-fn activate(
-    world_inspector: ResMut<WorldInspectorParams>,
-    cameras: Query<&mut FpsCameraController>,
-) {
-    update_active(true, world_inspector, cameras);
+fn activate(world_inspector: ResMut<WorldInspectorParams>) {
+    update_active(true, world_inspector);
 }
 
-fn deactivate(
-    world_inspector: ResMut<WorldInspectorParams>,
-    cameras: Query<&mut FpsCameraController>,
-) {
-    update_active(false, world_inspector, cameras);
+fn deactivate(world_inspector: ResMut<WorldInspectorParams>) {
+    update_active(false, world_inspector);
 }
 
-fn update_active(
-    active: bool,
-    mut world_inspector: ResMut<WorldInspectorParams>,
-    mut cameras: Query<&mut FpsCameraController>,
-) {
+fn update_active(active: bool, mut world_inspector: ResMut<WorldInspectorParams>) {
     world_inspector.enabled = active;
-    for mut c in cameras.iter_mut() {
-        c.enabled = !active
-    }
 }
