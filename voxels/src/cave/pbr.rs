@@ -12,7 +12,7 @@ pub fn insert_cave_chunk_pbr(
     query: Query<&CaveChunk>,
 ) {
     events.iter().for_each(|ev| {
-        if let Some(cave_chunk) = query.get(ev.entity).ok() {
+        if let Ok(cave_chunk) = query.get(ev.entity) {
             let sample_count = 2_u32.pow(cave_chunk.subdivisions);
             let voxel_size = settings.size / sample_count as f32;
 
@@ -27,8 +27,10 @@ pub fn insert_cave_chunk_pbr(
 
             let transform = commands
                 .spawn()
-                .insert(Transform::from_scale(Vec3::splat(voxel_size)))
-                .insert(GlobalTransform::default())
+                .insert_bundle(SpatialBundle {
+                    transform: Transform::from_scale(Vec3::splat(voxel_size)),
+                    ..default()
+                })
                 .add_child(pbr)
                 .id();
 

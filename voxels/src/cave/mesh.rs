@@ -23,26 +23,27 @@ impl Plugin for MeshCaveChunkPlugin {
 
 fn mesh_cave_chunk_voxels(
     mut commands: Commands,
-    task_pool: Res<AsyncComputeTaskPool>,
     mut events: EventReader<CaveChunkVoxelizedEvent>,
 ) {
+    let task_pool = AsyncComputeTaskPool::get();
     events.iter().for_each(|ev| {
         commands.spawn().insert(spawn_mesh_cave_chunk_voxels_task(
-            &task_pool,
+            task_pool,
             ev.entity,
             ev.voxels.clone(),
         ));
     })
 }
 
-type MeshCaveChunkVoxelsTask = Task<Option<(Entity, CaveChunkVoxels, Mesh)>>;
+#[derive(Component, Deref, DerefMut)]
+struct MeshCaveChunkVoxelsTask(Task<Option<(Entity, CaveChunkVoxels, Mesh)>>);
 
 fn spawn_mesh_cave_chunk_voxels_task(
     task_pool: &AsyncComputeTaskPool,
     cave_chunk_entity: Entity,
     cave_chunk_voxels: CaveChunkVoxels,
 ) -> MeshCaveChunkVoxelsTask {
-    task_pool.spawn(async move {
+    MeshCaveChunkVoxelsTask(task_pool.spawn(async move {
         let voxels = cave_chunk_voxels.voxels.try_read().ok()?;
 
         let mut buffer = GreedyQuadsBuffer::new(voxels.len());
@@ -64,7 +65,7 @@ fn spawn_mesh_cave_chunk_voxels_task(
         for (group, face) in buffer.quads.groups.iter().zip(faces.iter()) {
             for quad in group.iter() {
                 indices.extend_from_slice(&face.quad_mesh_indices(positions.len() as u32));
-                positions.extend_from_slice(&face.quad_mesh_positions(&quad, 1.0));
+                positions.extend_from_slice(&face.quad_mesh_positions(quad, 1.0));
                 normals.extend_from_slice(&face.quad_mesh_normals());
             }
         }
@@ -89,7 +90,7 @@ fn spawn_mesh_cave_chunk_voxels_task(
             cave_chunk_voxels.clone(),
             cave_chunk_mesh,
         ))
-    })
+    }))
 }
 
 pub struct CaveChunkVoxelsMeshedEvent {
@@ -105,7 +106,7 @@ fn handle_mesh_cave_chunk_voxels_tasks(
     mut query: Query<(Entity, &mut MeshCaveChunkVoxelsTask)>,
 ) {
     query.for_each_mut(|(task_entity, mut cave_chunk_task)| {
-        if let Some(result) = future::block_on(future::poll_once(&mut *cave_chunk_task)) {
+        if let Some(result) = future::block_on(future::poll_once(&mut **cave_chunk_task)) {
             commands.entity(task_entity).despawn();
 
             if let Some((entity, voxels, mesh)) = result {

@@ -1,7 +1,7 @@
 use bevy::{input::mouse::MouseMotion, prelude::*};
 use smooth_bevy_cameras::{
     controllers::fps::{ControlEvent, FpsCameraController},
-    LookAngles, LookTransform, LookTransformPlugin,
+    LookAngles, LookTransform, LookTransformBundle, LookTransformPlugin, Smoother,
 };
 
 pub struct CameraPlugin;
@@ -12,6 +12,36 @@ impl Plugin for CameraPlugin {
             .add_event::<ControlEvent>()
             .add_system(control_system)
             .add_system(input_map);
+    }
+}
+
+#[derive(Bundle)]
+pub struct CameraBundle {
+    #[bundle]
+    camera: Camera3dBundle,
+    controller: FpsCameraController,
+    #[bundle]
+    look_transform: LookTransformBundle,
+}
+
+impl CameraBundle {
+    pub fn new(eye: Vec3, look_target: Vec3, smoothing_weight: f32) -> Self {
+        // Make sure the transform is consistent with the controller to start.
+        let transform = Transform::from_translation(eye).looking_at(look_target, Vec3::Y);
+        Self {
+            camera: Camera3dBundle {
+                transform,
+                ..default()
+            },
+            controller: FpsCameraController {
+                smoothing_weight,
+                ..default()
+            },
+            look_transform: LookTransformBundle {
+                transform: LookTransform::new(eye, look_target),
+                smoother: Smoother::new(smoothing_weight),
+            },
+        }
     }
 }
 
@@ -71,9 +101,15 @@ pub fn control_system(
         // Can only control one camera at a time.
         let (controller, mut transform) = cameras.single_mut();
         if !controller.enabled {
+            error!("no camera controller");
             return;
         }
-        let look_vector = transform.look_direction().unwrap();
+        let look_vector = if let Some(look_vector) = transform.look_direction() {
+            look_vector
+        } else {
+            warn!("no look vector");
+            return;
+        };
         let mut look_angles = LookAngles::from_vector(look_vector);
 
         match event {

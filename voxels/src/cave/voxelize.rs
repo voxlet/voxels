@@ -37,15 +37,15 @@ fn detect_added_cave_chunks(
 
 fn voxelize_cave_chunks(
     mut commands: Commands,
-    task_pool: Res<AsyncComputeTaskPool>,
     settings: Res<CaveChunkSettings>,
     mut events: EventReader<CaveChunkNeedsVoxelizingEvent>,
     query: Query<&CaveChunk>,
 ) {
+    let task_pool = AsyncComputeTaskPool::get();
     events.iter().for_each(|ev| {
-        if let Some(cave_chunk) = query.get(ev.entity).ok() {
+        if let Ok(cave_chunk) = query.get(ev.entity) {
             commands.spawn().insert(spawn_voxelize_cave_chunk_task(
-                &task_pool,
+                task_pool,
                 settings.clone(),
                 ev.entity,
                 cave_chunk.clone(),
@@ -54,7 +54,8 @@ fn voxelize_cave_chunks(
     })
 }
 
-type VoxelizeCaveChunkTask = Task<Option<CaveChunkVoxelizedEvent>>;
+#[derive(Component, Deref, DerefMut)]
+struct VoxelizeCaveChunkTask(Task<Option<CaveChunkVoxelizedEvent>>);
 
 fn spawn_voxelize_cave_chunk_task(
     task_pool: &AsyncComputeTaskPool,
@@ -62,7 +63,7 @@ fn spawn_voxelize_cave_chunk_task(
     cave_chunk_entity: Entity,
     cave_chunk: CaveChunk,
 ) -> VoxelizeCaveChunkTask {
-    task_pool.spawn(async move {
+    VoxelizeCaveChunkTask(task_pool.spawn(async move {
         let noise_samples = cave_chunk.noise_samples.try_read().ok()?;
 
         let sample_count = 2_u32.pow(cave_chunk.subdivisions);
@@ -101,7 +102,7 @@ fn spawn_voxelize_cave_chunk_task(
                 shape,
             },
         })
-    })
+    }))
 }
 
 pub struct CaveChunkVoxelizedEvent {
@@ -115,7 +116,7 @@ fn handle_voxelize_cave_chunk_tasks(
     mut query: Query<(Entity, &mut VoxelizeCaveChunkTask)>,
 ) {
     query.for_each_mut(|(entity, mut cave_chunk_task)| {
-        if let Some(result) = future::block_on(future::poll_once(&mut *cave_chunk_task)) {
+        if let Some(result) = future::block_on(future::poll_once(&mut **cave_chunk_task)) {
             commands.entity(entity).despawn();
 
             if let Some(event) = result {

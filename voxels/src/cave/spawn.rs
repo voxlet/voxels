@@ -17,7 +17,8 @@ impl Plugin for CaveSpawnPlugin {
     }
 }
 
-type CaveChunkTask = Task<CaveChunkBundle>;
+#[derive(Component, Deref, DerefMut)]
+pub struct CaveChunkTask(Task<CaveChunkBundle>);
 
 pub fn spawn_cave_chunk_task(
     task_pool: &AsyncComputeTaskPool,
@@ -25,9 +26,9 @@ pub fn spawn_cave_chunk_task(
     origin: Vec3,
     subdivisions: u32,
 ) -> CaveChunkTask {
-    task_pool.spawn(async move {
+    CaveChunkTask(task_pool.spawn(async move {
         CaveChunkBundle::new(&settings, Transform::from_translation(origin), subdivisions)
-    })
+    }))
 }
 
 fn handle_spawn_cave_chunk_tasks(
@@ -35,7 +36,7 @@ fn handle_spawn_cave_chunk_tasks(
     mut query: Query<(Entity, &mut CaveChunkTask)>,
 ) {
     query.for_each_mut(|(task_entity, mut cave_chunk_task)| {
-        if let Some(cave_chunk_bundle) = future::block_on(future::poll_once(&mut *cave_chunk_task))
+        if let Some(cave_chunk_bundle) = future::block_on(future::poll_once(&mut **cave_chunk_task))
         {
             commands.entity(task_entity).despawn();
 
@@ -47,7 +48,6 @@ fn handle_spawn_cave_chunk_tasks(
 }
 
 fn spawn_around_player(
-    _task_pool: Res<AsyncComputeTaskPool>,
     mut events: EventReader<ControlEvent>,
     player: Query<&GlobalTransform, (With<Player>, Changed<LookTransform>)>,
 ) {
@@ -59,6 +59,8 @@ fn spawn_around_player(
 
     let mut moved = false;
     for ev in events.iter() {
+        // add more as needed
+        #[allow(clippy::single_match)]
         match ev {
             &ControlEvent::TranslateEye(_) => {
                 moved = true;
@@ -71,5 +73,6 @@ fn spawn_around_player(
         return;
     }
 
-    info!(translation = ?player.translation);
+    let _task_pool = AsyncComputeTaskPool::get();
+    info!(translation = ?player.translation());
 }

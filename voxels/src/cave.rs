@@ -19,13 +19,10 @@ impl Plugin for CavePlugin {
     }
 }
 
-fn test_spawn(
-    mut commands: Commands,
-    mut ready_event: EventReader<chunk::ReadyEvent>,
-    task_pool: Res<AsyncComputeTaskPool>,
-) {
+fn test_spawn(mut commands: Commands, mut ready_event: EventReader<chunk::ReadyEvent>) {
     ready_event.iter().for_each(|ready_event| {
         let settings = &ready_event.settings;
+        let task_pool = AsyncComputeTaskPool::get();
         for x in -2..2 {
             for y in -2..0 {
                 for z in -2..2 {
@@ -36,7 +33,7 @@ fn test_spawn(
                     // .max(1.0) as u32;
 
                     commands.spawn().insert(spawn::spawn_cave_chunk_task(
-                        &task_pool,
+                        task_pool,
                         settings.clone(),
                         origin,
                         subdivisions,

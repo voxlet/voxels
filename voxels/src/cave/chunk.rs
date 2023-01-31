@@ -57,17 +57,19 @@ pub struct CaveChunkSettings {
 
 #[derive(Bundle, Default)]
 pub struct CaveChunkBundle {
-    pub transform: Transform,
-    global_transform: GlobalTransform,
+    #[bundle]
+    pub spatial: SpatialBundle,
     pub cave_chunk: CaveChunk,
 }
 
 impl CaveChunkBundle {
     pub fn new(settings: &CaveChunkSettings, transform: Transform, subdivisions: u32) -> Self {
         CaveChunkBundle {
-            transform,
+            spatial: SpatialBundle {
+                transform,
+                ..default()
+            },
             cave_chunk: CaveChunk::new(settings, transform.translation, subdivisions),
-            ..Default::default()
         }
     }
 }
