@@ -12,6 +12,7 @@ bevy-inspector-egui = "0.9"
 bevy_egui = "0.12"
 simdnoise = "3"
 block-mesh = { git = "https://github.com/bonsairobo/block-mesh-rs.git", rev = "68e9da" }
+futures-lite = "1"
 
 [dependencies.bevy]
 version = "0.6"
