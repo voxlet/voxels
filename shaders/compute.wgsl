@@ -17,8 +17,9 @@ var voxels: texture_3d<f32>;
 [[group(0), binding(3)]]
 var voxel_sampler: sampler;
 
-var<private> voxel_radius: vec3<f32>;
-var<private> voxel_inv_radius: vec3<f32>;
+var<private> voxel_radius: array<vec3<f32>, 10>;
+var<private> voxel_inv_radius: array<vec3<f32>, 10>;
+var<private> max_mip_level: u32;
 
 struct Ray {
     origin: vec3<f32>;
@@ -32,10 +33,10 @@ struct Box {
     inv_radius: vec3<f32>;
 };
 
-fn box_at(point: vec3<f32>) -> Box {
+fn box_at(point: vec3<f32>, mip_level: u32) -> Box {
     var box: Box;
-    box.radius = voxel_radius;
-    box.inv_radius = voxel_inv_radius;
+    box.radius = voxel_radius[mip_level];
+    box.inv_radius = voxel_inv_radius[mip_level];
 
     let box_size = box.radius * 2.0;
     box.center = floor(point / box_size) * box_size + box.radius;
@@ -76,10 +77,7 @@ fn intersect(ray: Ray, box: Box) -> Intersection {
         sgn.x != 0.0
     );
 
-    var res: Intersection;
-    res.distance = dist;
-    res.normal = sgn;
-    return res;
+    return Intersection(dist, sgn);
 }
 
 struct Hit {
@@ -89,37 +87,61 @@ struct Hit {
     voxel: vec4<f32>;
 };
 
-let max_march_steps: u32 = 2048u;
-let max_ray_distance: f32 = 1.4143;
+let max_march_steps: u32 = 128u;
 fn march_ray(ray: Ray) -> Hit {
     var res: Hit;
     res.hit = false;
     res.steps = 0u;
 
-    var exit: Intersection;
     var voxel: vec4<f32> = vec4<f32>(0.0);
-    var box: Box = box_at(ray.origin);
+
+    var box: Box = box_at(ray.origin, 0u);
+    var exit: Intersection = intersect(ray, box);
+    var exit_point: vec3<f32>;
+    var mip_level: u32 = 0u;
+    var prev_voxel: vec4<f32>;
+    var min_mip_level: u32;
     loop {
-        exit = intersect(ray, box);
-        box = box_at(box.center - vec3<f32>(box.radius * 2.0) * exit.normal);
-        voxel = select(
-            vec4<f32>(0.0),
-            textureSampleLevel(
-                voxels,
-                voxel_sampler,
-                box.center,
-                0.0
-            ),
-            any(box.center > vec3<f32>(1.0))
-        );
-        if (voxel.a > 0.0 ||
-            res.steps > max_march_steps ||
-            exit.distance > max_ray_distance) {
+        // min_mip_level = max(0u, u32(log2(exit.distance)));
+        exit_point = ray.origin + ray.direction * exit.distance;
+        loop {
+            box = box_at(
+                exit_point - exit.normal * state.voxel_size * 0.5,
+                mip_level
+            );
+            prev_voxel = voxel;
+            voxel = select(
+                vec4<f32>(0.0),
+                textureSampleLevel(
+                    voxels,
+                    voxel_sampler,
+                    box.center,
+                    f32(mip_level)
+                ),
+                any(box.center > vec3<f32>(1.0))
+            );
+            if (voxel.a > 0.0) {
+                // if (mip_level <= min_mip_level) {
+                if (mip_level == 0u) {
+                    break;
+                }
+                mip_level = mip_level - 1u;
+                continue;
+            }
+            if (prev_voxel.a > 0.0 || mip_level == max_mip_level) {
+                break;
+            }
+            mip_level = mip_level + 1u;
+        }
+
+        if (voxel.a > 0.0 || res.steps > max_march_steps) {
             res.hit = voxel.a > 0.0;
             res.intersection = exit;
             res.voxel = voxel;
             return res;
         }
+
+        exit = intersect(ray, box);
         res.steps = res.steps + 1u;
     };
     return res;
@@ -174,8 +196,16 @@ fn main(
     [[builtin(global_invocation_id)]]
     gid: vec3<u32>
 ) {
-    voxel_radius = vec3<f32>(state.voxel_size * 0.5);
-    voxel_inv_radius = 1.0 / voxel_radius;
+    max_mip_level = u32(ceil(log2(1.0 / state.voxel_size))) - 1u;
+    var i: u32 = 0u;
+    loop {
+        voxel_radius[i] = vec3<f32>(state.voxel_size * 0.5 * exp2(f32(i)));
+        voxel_inv_radius[i] = 1.0 / voxel_radius[i];
+        i = i + 1u;
+        if (i > max_mip_level) {
+            break;
+        }
+    }
 
     let ray: Ray = ray_for(gid);
     let pixel_index: u32 = gid.y * u32(state.resolution.x) + gid.x;
