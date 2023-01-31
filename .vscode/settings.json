@@ -12,6 +12,7 @@
     "multisample",
     "shaderc",
     "spirv",
+    "voxel",
     "voxels",
     "wgpu",
     "wgsl",
