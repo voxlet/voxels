@@ -9,61 +9,226 @@ struct Hit {
     voxel: vec4<f32>;
 };
 
-fn march_ray(ray: Ray, max_steps: u32) -> Hit {
+fn march_ray(ray: Ray, tan_aperture: f32, max_steps: u32) -> Hit {
     var res: Hit;
     res.hit = false;
     res.steps = 0u;
+    res.voxel = vec4<f32>(0.0);
 
+    let step_epsilon = state.voxel_size * 0.01;
     var voxel: vec4<f32> = vec4<f32>(0.0);
+    var sample_mip_level: f32 = 0.0;
+    var mip_level: f32;
+    var exit_point: vec3<f32> = ray.origin;
 
-    var box: Box = box_at(ray.origin, 0u);
-    var exit: Intersection = intersect(ray, box);
-    var exit_point: vec3<f32>;
-    var mip_level: u32 = 0u;
+    var box: Box;
+    var exit: Intersection;
+    var sample_point: vec3<f32>;
     var prev_voxel: vec4<f32>;
-    var min_mip_level: u32;
     loop {
-        // min_mip_level = max(0u, u32(log2(exit.distance)));
-        exit_point = ray.origin + ray.direction * exit.distance;
+        res.steps = res.steps + 1u;
+
+        box = unit_box_at(exit_point, u32(sample_mip_level));
+        exit = intersect(ray, box);
+        mip_level = min(
+            log2(exit.distance * tan_aperture * voxel_inv_radius[0].x),
+            max_mip_level
+        );
+        exit_point =
+            ray.origin
+            + ray.direction * exit.distance
+            - exit.normal * step_epsilon;
+
         loop {
-            box = box_at(
-                exit_point - exit.normal * state.voxel_size * 0.5,
-                mip_level
-            );
             prev_voxel = voxel;
             voxel = select(
                 vec4<f32>(0.0),
                 textureSampleLevel(
                     voxels,
-                    voxel_sampler,
-                    box.center,
-                    f32(mip_level)
+                    voxel_nearest_sampler,
+                    exit_point,
+                    sample_mip_level
                 ),
-                any(box.center > vec3<f32>(1.0))
+                any(exit_point > vec3<f32>(1.0))
             );
             if (voxel.a > 0.0) {
-                // if (mip_level <= min_mip_level) {
-                if (mip_level == 0u) {
+                if (sample_mip_level <= 0.0) {
                     break;
                 }
-                mip_level = mip_level - 1u;
+                sample_mip_level = sample_mip_level - 1.0;
                 continue;
             }
-            if (prev_voxel.a > 0.0 || mip_level == max_mip_level) {
+            if (prev_voxel.a > 0.0 || sample_mip_level >= max_mip_level) {
                 break;
             }
-            mip_level = mip_level + 1u;
+            sample_mip_level = sample_mip_level + 1.0;
         }
 
-        if (voxel.a > 0.0 || res.steps > max_steps) {
-            res.hit = voxel.a > 0.0;
+        if (voxel.a >= 1.0 || res.steps >= max_steps) {
+            res.hit = voxel.a >= 1.0;
             res.intersection = exit;
             res.voxel = voxel;
             return res;
         }
-
-        exit = intersect(ray, box);
-        res.steps = res.steps + 1u;
     };
+
+    return res;
+}
+
+fn march_cone(ray: Ray, tan_aperture: f32, max_dist: f32, max_steps: u32) -> Hit {
+    var res: Hit;
+    res.hit = false;
+    res.steps = 0u;
+    res.voxel = vec4<f32>(0.0);
+
+    let step_epsilon = state.voxel_size * 0.01;
+    var voxel: vec4<f32> = vec4<f32>(0.0);
+    var sample_mip_level: f32 = 0.0;
+    var mip_level: f32;
+    var exit_point: vec3<f32> = ray.origin;
+
+    var box: Box;
+    var exit: Intersection;
+    var sample_point: vec3<f32>;
+    var prev_voxel: vec4<f32>;
+    loop {
+        res.steps = res.steps + 1u;
+
+        box = unit_box_at(exit_point, u32(sample_mip_level));
+        exit = intersect(ray, box);
+        mip_level = min(
+            log2(exit.distance * tan_aperture * voxel_inv_radius[0].x) - 1.0,
+            max_mip_level
+        );
+        if (mip_level >= 0.0) {
+            break;
+        }
+        exit_point =
+            ray.origin
+            + ray.direction * exit.distance
+            - exit.normal * step_epsilon;
+
+        loop {
+            prev_voxel = voxel;
+            voxel = select(
+                vec4<f32>(0.0),
+                textureSampleLevel(
+                    voxels,
+                    voxel_nearest_sampler,
+                    exit_point,
+                    sample_mip_level
+                ),
+                any(exit_point > vec3<f32>(1.0))
+            );
+            if (voxel.a > 0.0) {
+                if (sample_mip_level <= 0.0) {
+                    break;
+                }
+                sample_mip_level = sample_mip_level - 1.0;
+                continue;
+            }
+            if (prev_voxel.a > 0.0 || sample_mip_level >= max_mip_level) {
+                break;
+            }
+            sample_mip_level = sample_mip_level + 1.0;
+        }
+
+        if (voxel.a >= 1.0
+            || exit.distance > max_dist
+            || res.steps > max_steps
+            || any(exit_point > vec3<f32>(1.0))) {
+            res.hit = voxel.a >= 1.0;
+            res.intersection = exit;
+            res.voxel = voxel;
+            return res;
+        }
+    };
+
+    var dist: f32 = exit.distance;
+    var sample_point: vec3<f32>;
+    loop {
+        res.steps = res.steps + 1u;
+
+        sample_mip_level = clamp(
+            log2(dist * tan_aperture * voxel_inv_radius[0].x) - 1.0,
+            0.0, max_mip_level
+        );
+
+        sample_point = ray.origin + ray.direction * dist;
+
+        voxel = select(
+            vec4<f32>(0.0),
+            textureSampleLevel(
+                voxels,
+                voxel_linear_sampler,
+                sample_point,
+                sample_mip_level
+            ),
+            any(sample_point > vec3<f32>(1.0))
+        );
+
+        voxel = voxel * (1.0 - res.voxel.a);
+        res.voxel = res.voxel + vec4<f32>(voxel.rgb * voxel.a, voxel.a);
+
+        if (res.voxel.a >= 1.0
+            || dist > max_dist
+            || res.steps > max_steps
+            || any(sample_point > vec3<f32>(1.0))) {
+            res.voxel.a = min(res.voxel.a, 1.0);
+            res.hit = res.voxel.a > 0.0;
+            res.intersection.distance = dist;
+            break;
+        }
+
+        dist = dist + voxel_radius[u32(sample_mip_level)].x;
+    };
+
+    return res;
+}
+
+fn sample_cone(ray: Ray, tan_aperture: f32, max_steps: u32) -> Hit {
+    var res: Hit;
+    res.hit = false;
+    res.steps = 0u;
+    res.voxel = vec4<f32>(0.0);
+
+    var dist: f32 = state.voxel_size * 0.5;
+    var sample_mip_level: f32;
+    var sample_point: vec3<f32>;
+    var voxel: vec4<f32>;
+    loop {
+        res.steps = res.steps + 1u;
+
+        sample_mip_level = clamp(
+            log2(dist * tan_aperture * voxel_inv_radius[0].x),
+            0.0, max_mip_level
+        );
+
+        sample_point = ray.origin + ray.direction * dist;
+
+        voxel = select(
+            vec4<f32>(0.0),
+            textureSampleLevel(
+                voxels,
+                voxel_linear_sampler,
+                sample_point,
+                sample_mip_level
+            ),
+            any(sample_point > vec3<f32>(1.0))
+        );
+
+        voxel = voxel * (1.0 - res.voxel.a);
+        res.voxel = res.voxel + vec4<f32>(voxel.rgb * voxel.a, voxel.a);
+
+        if (res.voxel.a >= 1.0 || res.steps >= max_steps) {
+            res.voxel.a = min(res.voxel.a, 1.0);
+            res.hit = res.voxel.a > 0.0;
+            res.intersection.distance = dist;
+            break;
+        }
+
+        dist = dist + voxel_radius[u32(sample_mip_level)].x;
+    };
+
     return res;
 }

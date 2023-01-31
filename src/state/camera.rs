@@ -29,15 +29,15 @@ fn rotation(yaw: f32, pitch: f32) -> glam::Mat3 {
 
 impl Camera {
     pub fn new() -> Self {
-        let yaw = 0.0;
-        let pitch = 0.0;
+        let yaw = 3.77;
+        let pitch = 0.53;
         let rotation = rotation(yaw, pitch);
         Camera {
             yaw,
             pitch,
             mouse_sensitivity: 0.002,
             active_motions: HashSet::new(),
-            position: glam::vec3(0.5, 1.3, 0.0),
+            position: glam::vec3(0.78, 1.02, 0.83),
             max_velocity: 0.1,
             rotation,
         }

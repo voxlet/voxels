@@ -106,6 +106,7 @@ impl Ui {
         .build();
 
         let ctx = self.platform.context();
+        ctx.set_visuals(egui::Visuals::light());
 
         window::ui(&ctx, state, gpu);
 

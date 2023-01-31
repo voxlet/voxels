@@ -20,7 +20,8 @@ pub struct Gpu {
     pub queue: wgpu::Queue,
     pub state: State,
     voxel_view: wgpu::TextureView,
-    voxel_sampler: wgpu::Sampler,
+    voxel_nearest_sampler: wgpu::Sampler,
+    voxel_linear_sampler: wgpu::Sampler,
     pixel_buffer_desc: wgpu::BufferDescriptor<'static>,
     pixel_buffer: wgpu::Buffer,
     pub swap_chain_desc: wgpu::SwapChainDescriptor,
@@ -66,7 +67,7 @@ impl Gpu {
         let state = State::from(&device, width, height, camera);
 
         let mut shaders = Shaders::new("shaders");
-        let (voxel_view, voxel_sampler) =
+        let (voxel_view, voxel_nearest_sampler, voxel_linear_sampler) =
             voxel::create_texture(&device, &queue, &mut shaders, state.data.voxel_size);
 
         let pixel_buffer_desc = wgpu::BufferDescriptor {
@@ -96,7 +97,8 @@ impl Gpu {
             queue,
             state,
             voxel_view,
-            voxel_sampler,
+            voxel_nearest_sampler,
+            voxel_linear_sampler,
             pixel_buffer_desc,
             pixel_buffer,
             swap_chain_desc,
@@ -137,7 +139,7 @@ impl Gpu {
     }
 
     pub fn set_voxel_size(&mut self, voxel_size: f32) {
-        let (voxel_view, voxel_sampler) = voxel::create_texture(
+        let (voxel_view, voxel_nearest_sampler, voxel_linear_sampler) = voxel::create_texture(
             &self.device,
             &self.queue,
             &mut self.shaders.lock().unwrap(),
@@ -145,7 +147,8 @@ impl Gpu {
         );
 
         self.voxel_view = voxel_view;
-        self.voxel_sampler = voxel_sampler;
+        self.voxel_nearest_sampler = voxel_nearest_sampler;
+        self.voxel_linear_sampler = voxel_linear_sampler;
 
         self.state.update(
             &self.queue,
@@ -166,7 +169,8 @@ impl Gpu {
             &self.state,
             &self.pixel_buffer,
             &self.voxel_view,
-            &self.voxel_sampler,
+            &self.voxel_nearest_sampler,
+            &self.voxel_linear_sampler,
         );
         // submit will accept anything that implements IntoIter
         self.queue.submit(std::iter::once(compute_encoder.finish()));
