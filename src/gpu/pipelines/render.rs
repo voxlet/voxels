@@ -1,5 +1,3 @@
-use std::sync::{Arc, Mutex};
-
 use crate::gpu::{shader::Shaders, state};
 
 pub struct Render {
@@ -10,12 +8,12 @@ pub struct Render {
 impl Render {
     pub fn new(
         device: &wgpu::Device,
-        shaders: Arc<Mutex<Shaders>>,
+        shaders: &mut Shaders,
         swap_chain_desc: &wgpu::SwapChainDescriptor,
     ) -> Self {
         let module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("Blit Shader"),
-            source: shaders.lock().unwrap().source("blit.wgsl"),
+            source: shaders.source("blit.wgsl"),
             flags: wgpu::ShaderFlags::default(),
         });
 

@@ -25,6 +25,7 @@ pub struct Gpu {
     pixel_buffer: wgpu::Buffer,
     pub swap_chain_desc: wgpu::SwapChainDescriptor,
     swap_chain: wgpu::SwapChain,
+    shaders: Arc<Mutex<Shaders>>,
     pipelines: Pipelines,
 }
 
@@ -64,8 +65,9 @@ impl Gpu {
         let winit::dpi::PhysicalSize { width, height } = window.inner_size();
         let state = State::from(&device, width, height, camera);
 
+        let mut shaders = Shaders::new("shaders");
         let (voxel_view, voxel_sampler) =
-            voxel::create_texture(&device, &queue, state.data.voxel_size);
+            voxel::create_texture(&device, &queue, &mut shaders, state.data.voxel_size);
 
         let pixel_buffer_desc = wgpu::BufferDescriptor {
             label: Some("Compute Pixel Buffer"),
@@ -84,9 +86,9 @@ impl Gpu {
         };
         let swap_chain = device.create_swap_chain(&surface, &swap_chain_desc);
 
-        let shaders = Arc::new(Mutex::new(Shaders::new("shaders")));
         let device = Arc::new(device);
-        let pipelines = Pipelines::new(device.clone(), shaders, &swap_chain_desc);
+        let shaders = Arc::new(Mutex::new(shaders));
+        let pipelines = Pipelines::new(&device, &shaders, &swap_chain_desc);
 
         Gpu {
             surface,
@@ -99,6 +101,7 @@ impl Gpu {
             pixel_buffer,
             swap_chain_desc,
             swap_chain,
+            shaders,
             pipelines,
         }
     }
@@ -134,8 +137,12 @@ impl Gpu {
     }
 
     pub fn set_voxel_size(&mut self, voxel_size: f32) {
-        let (voxel_view, voxel_sampler) =
-            voxel::create_texture(&self.device, &self.queue, voxel_size);
+        let (voxel_view, voxel_sampler) = voxel::create_texture(
+            &self.device,
+            &self.queue,
+            &mut self.shaders.lock().unwrap(),
+            voxel_size,
+        );
 
         self.voxel_view = voxel_view;
         self.voxel_sampler = voxel_sampler;

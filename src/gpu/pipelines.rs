@@ -1,4 +1,5 @@
 mod compute;
+pub mod mipmap;
 mod render;
 
 use std::sync::{Arc, Mutex};
@@ -15,8 +16,8 @@ pub struct Pipelines {
 
 impl Pipelines {
     pub fn new(
-        device: Arc<wgpu::Device>,
-        shaders: Arc<Mutex<Shaders>>,
+        device: &Arc<wgpu::Device>,
+        shaders: &Arc<Mutex<Shaders>>,
         swap_chain_desc: &wgpu::SwapChainDescriptor,
     ) -> Self {
         let compute = Arc::new(Mutex::new(Compute::new(device.clone(), shaders.clone())));
@@ -28,7 +29,7 @@ impl Pipelines {
 
         Pipelines {
             compute,
-            render: Render::new(&*device, shaders, swap_chain_desc),
+            render: Render::new(&*device, &mut shaders.lock().unwrap(), swap_chain_desc),
         }
     }
 }

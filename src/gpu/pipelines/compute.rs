@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use crate::gpu::{shader::Shaders, state};
+use crate::gpu::{shader::Shaders, state, voxel};
 
 const WORKGROUP_SIZE: u32 = 30;
 
@@ -18,7 +18,7 @@ impl Compute {
         let compute_shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("Compute Shader"),
             flags: wgpu::ShaderFlags::default(),
-            source: shaders.lock().unwrap().source("compute.wgsl"),
+            source: shaders.lock().unwrap().source(source_file),
         });
 
         let pixel_buffer_layout_entry = wgpu::BindGroupLayoutEntry {
@@ -32,34 +32,13 @@ impl Compute {
             count: None,
         };
 
-        let voxel_texture_layout_entry = wgpu::BindGroupLayoutEntry {
-            binding: 2,
-            visibility: wgpu::ShaderStage::COMPUTE,
-            ty: wgpu::BindingType::Texture {
-                sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                view_dimension: wgpu::TextureViewDimension::D3,
-                multisampled: false,
-            },
-            count: None,
-        };
-
-        let voxel_sampler_layout_entry = wgpu::BindGroupLayoutEntry {
-            binding: 3,
-            visibility: wgpu::ShaderStage::COMPUTE,
-            ty: wgpu::BindingType::Sampler {
-                filtering: true,
-                comparison: false,
-            },
-            count: None,
-        };
-
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("Compute Bind Group Layout"),
             entries: &[
                 state::bind_group_layout_entry(0, wgpu::ShaderStage::COMPUTE),
                 pixel_buffer_layout_entry,
-                voxel_texture_layout_entry,
-                voxel_sampler_layout_entry,
+                voxel::texture_layout_entry(2),
+                voxel::sampler_layout_entry(3),
             ],
         });
 
@@ -80,7 +59,7 @@ impl Compute {
             device,
             pipeline,
             bind_group_layout,
-            shaders: shaders.clone(),
+            shaders,
             source_file: source_file.to_string(),
         }
     }
