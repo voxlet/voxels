@@ -1,10 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use bevy::{
-    prelude::*,
-    tasks::{AsyncComputeTaskPool, Task},
-};
-use futures_lite::future;
+use bevy::prelude::*;
 
 pub struct CaveChunkPlugin;
 
@@ -12,7 +8,6 @@ impl Plugin for CaveChunkPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<ReadyEvent>();
         app.add_startup_system(insert_settings);
-        app.add_system(handle_spawn_cave_chunk_tasks);
     }
 }
 
@@ -60,35 +55,6 @@ pub struct CaveChunkSettings {
     pub material: Handle<StandardMaterial>,
 }
 
-type CaveChunkTask = Task<CaveChunkBundle>;
-
-pub fn spawn_cave_chunk_task(
-    task_pool: &AsyncComputeTaskPool,
-    settings: CaveChunkSettings,
-    origin: Vec3,
-    subdivisions: u32,
-) -> CaveChunkTask {
-    task_pool.spawn(async move {
-        CaveChunkBundle::new(&settings, Transform::from_translation(origin), subdivisions)
-    })
-}
-
-fn handle_spawn_cave_chunk_tasks(
-    mut commands: Commands,
-    mut query: Query<(Entity, &mut CaveChunkTask)>,
-) {
-    query.for_each_mut(|(task_entity, mut cave_chunk_task)| {
-        if let Some(cave_chunk_bundle) = future::block_on(future::poll_once(&mut *cave_chunk_task))
-        {
-            commands.entity(task_entity).despawn();
-
-            let subdivisions = cave_chunk_bundle.cave_chunk.subdivisions;
-            let cave_chunk_entity = commands.spawn_bundle(cave_chunk_bundle).id();
-            info!(entity = ?cave_chunk_entity, subdivisions = ?subdivisions);
-        }
-    })
-}
-
 #[derive(Bundle, Default)]
 pub struct CaveChunkBundle {
     pub transform: Transform,
@@ -97,7 +63,7 @@ pub struct CaveChunkBundle {
 }
 
 impl CaveChunkBundle {
-    fn new(settings: &CaveChunkSettings, transform: Transform, subdivisions: u32) -> Self {
+    pub fn new(settings: &CaveChunkSettings, transform: Transform, subdivisions: u32) -> Self {
         CaveChunkBundle {
             transform,
             cave_chunk: CaveChunk::new(settings, transform.translation, subdivisions),
