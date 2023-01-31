@@ -60,7 +60,10 @@ fn spawn_around_player(
     let mut moved = false;
     for ev in events.iter() {
         match ev {
-            &ControlEvent::TranslateEye(_) => moved = true,
+            &ControlEvent::TranslateEye(_) => {
+                moved = true;
+                break;
+            }
             _ => {}
         }
     }
