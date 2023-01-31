@@ -3,4 +3,5 @@ struct State {
     camera_rotation: mat3x3<f32>;
     camera_position: vec3<f32>;
     resolution: vec2<f32>;
+    voxel_size: f32;
 };
