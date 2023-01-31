@@ -8,6 +8,9 @@ enum CameraMotion {
     Backward,
     Right,
     Left,
+    Up,
+    Down,
+    Sprint,
 }
 
 pub struct Camera {
@@ -60,6 +63,9 @@ impl Camera {
                         VirtualKeyCode::A => Some(CameraMotion::Left),
                         VirtualKeyCode::S => Some(CameraMotion::Backward),
                         VirtualKeyCode::D => Some(CameraMotion::Right),
+                        VirtualKeyCode::Space => Some(CameraMotion::Up),
+                        VirtualKeyCode::LControl => Some(CameraMotion::Down),
+                        VirtualKeyCode::LShift => Some(CameraMotion::Sprint),
                         _ => None,
                     } {
                         match state {
@@ -76,6 +82,11 @@ impl Camera {
     }
 
     pub fn update(&mut self, dt: Duration) {
+        let max_velocity = if self.active_motions.contains(&CameraMotion::Sprint) {
+            self.max_velocity * 10.0
+        } else {
+            self.max_velocity
+        };
         self.rotation = rotation(self.yaw, self.pitch);
 
         if let Some(dir) = (&self.active_motions)
@@ -85,10 +96,13 @@ impl Camera {
                 CameraMotion::Backward => glam::vec3(0.0, 0.0, -1.0),
                 CameraMotion::Right => glam::vec3(1.0, 0.0, 0.0),
                 CameraMotion::Left => glam::vec3(-1.0, 0.0, 0.0),
+                CameraMotion::Up => glam::vec3(0.0, 1.0, 0.0),
+                CameraMotion::Down => glam::vec3(0.0, -1.0, 0.0),
+                _ => glam::vec3(0.0, 0.0, 0.0),
             })
             .reduce(|z, v| z + v)
         {
-            let vel = (self.rotation * dir).clamp_length_max(self.max_velocity);
+            let vel = (self.rotation * dir).clamp_length_max(max_velocity);
             self.position += vel * dt.as_secs_f32();
         }
     }

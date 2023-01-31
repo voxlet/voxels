@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::gpu::{shader::Shaders, state, voxel};
 
-const WORKGROUP_SIZE: u32 = 30;
+const WORKGROUP_SIZE: u32 = 8;
 
 pub struct Compute {
     device: Arc<wgpu::Device>,
