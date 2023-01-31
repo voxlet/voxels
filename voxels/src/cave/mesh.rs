@@ -70,13 +70,16 @@ fn spawn_mesh_cave_chunk_voxels_task(
         }
 
         let mut cave_chunk_mesh = Mesh::new(PrimitiveTopology::TriangleList);
-        cave_chunk_mesh.set_attribute(
-            "Vertex_Position",
+        cave_chunk_mesh.insert_attribute(
+            Mesh::ATTRIBUTE_POSITION,
             VertexAttributeValues::Float32x3(positions),
         );
-        cave_chunk_mesh.set_attribute("Vertex_Normal", VertexAttributeValues::Float32x3(normals));
-        cave_chunk_mesh.set_attribute(
-            "Vertex_Uv",
+        cave_chunk_mesh.insert_attribute(
+            Mesh::ATTRIBUTE_NORMAL,
+            VertexAttributeValues::Float32x3(normals),
+        );
+        cave_chunk_mesh.insert_attribute(
+            Mesh::ATTRIBUTE_UV_0,
             VertexAttributeValues::Float32x2(vec![[0.0; 2]; num_vertices]),
         );
         cave_chunk_mesh.set_indices(Some(Indices::U32(indices)));

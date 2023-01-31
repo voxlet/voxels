@@ -7,15 +7,15 @@ default-run = "voxels"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-smooth-bevy-cameras = "0.2"
-bevy-inspector-egui = "0.9"
-bevy_egui = "0.12"
+smooth-bevy-cameras = "0.4"
+bevy-inspector-egui = "0.10"
+bevy_egui = "0.13"
 simdnoise = "3"
-block-mesh = { git = "https://github.com/bonsairobo/block-mesh-rs.git", rev = "68e9da" }
+block-mesh = "0.2"
 futures-lite = "1"
 
 [dependencies.bevy]
-version = "0.6"
+version = "0.7"
 # Disable the default features if there are any that you do not want
 default-features = false
 features = [
