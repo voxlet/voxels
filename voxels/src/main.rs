@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use bevy::{diagnostic, prelude::*};
 
 mod camera;
@@ -10,8 +12,22 @@ fn main() {
         .add_plugin(diagnostic::LogDiagnosticsPlugin::default())
         .add_plugin(inspector::InspectorPlugin)
         .add_plugin(camera::CameraPlugin)
+        .init_resource::<GlobalState>()
         .add_startup_system(setup)
         .run();
+}
+
+#[derive(Debug)]
+struct GlobalState {
+    start_time: Instant,
+}
+
+impl FromWorld for GlobalState {
+    fn from_world(_: &mut World) -> Self {
+        GlobalState {
+            start_time: Instant::now(),
+        }
+    }
 }
 
 fn setup(
