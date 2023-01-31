@@ -104,6 +104,7 @@ pub async fn run() {
             } if window_id == window.id() => match event {
                 WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                 WindowEvent::Resized(physical_size) => {
+                    tracing::info!(physical_size = ?physical_size, "resized");
                     let scale_factor = state.scale_factor;
                     resize(&mut state, &mut gpu, *physical_size, scale_factor);
                 }
@@ -111,6 +112,11 @@ pub async fn run() {
                     new_inner_size,
                     scale_factor,
                 } => {
+                    tracing::info!(
+                        new_inner_size = ?new_inner_size,
+                        scale_factor = ?scale_factor,
+                        "scale factor changed"
+                    );
                     resize(&mut state, &mut gpu, **new_inner_size, *scale_factor);
                 }
                 WindowEvent::KeyboardInput {
