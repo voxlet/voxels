@@ -1,4 +1,3 @@
-[[block]]
 struct Args {
     size: u32;
     mip_level: u32;
@@ -8,10 +7,10 @@ struct Args {
 var<uniform> args: Args;
 
 [[group(0), binding(1)]]
-var input: [[access(read)]] texture_storage_3d<rgba8unorm>;
+var input: texture_storage_3d<rgba8unorm, read>;
 
 [[group(0), binding(2)]]
-var output: [[access(write)]] texture_storage_3d<rgba8unorm>;
+var output: texture_storage_3d<rgba8unorm, write>;
 
 [[stage(compute), workgroup_size(2, 2, 2)]]
 fn main(

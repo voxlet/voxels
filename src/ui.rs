@@ -8,7 +8,6 @@ use std::{
 use egui::FontDefinitions;
 use egui_wgpu_backend::{RenderPass, ScreenDescriptor};
 use egui_winit_platform::{Platform, PlatformDescriptor};
-use wgpu::SwapChainTexture;
 use winit::{
     event_loop::{EventLoop, EventLoopProxy},
     window::Window,
@@ -24,7 +23,7 @@ pub enum AppEvent {
 /// It sends the custom RequestRedraw event to the winit event loop.
 pub struct RepaintSignal(Mutex<EventLoopProxy<AppEvent>>);
 
-impl epi::RepaintSignal for RepaintSignal {
+impl epi::backend::RepaintSignal for RepaintSignal {
     fn request_repaint(&self) {
         self.0
             .lock()
@@ -67,6 +66,7 @@ impl Ui {
             render_pass: egui_wgpu_backend::RenderPass::new(
                 &gpu.device,
                 wgpu::TextureFormat::Bgra8UnormSrgb,
+                1,
             ),
             start_time: Instant::now(),
             previous_frame_time: None,
@@ -80,7 +80,7 @@ impl Ui {
 
     pub fn render(
         &mut self,
-        frame: &SwapChainTexture,
+        frame: &wgpu::SurfaceTexture,
         gpu: &mut Gpu,
         state: &mut State,
         physics: &mut Physics,
@@ -91,20 +91,19 @@ impl Ui {
 
         let egui_start = Instant::now();
         self.platform.begin_frame();
-        let mut app_output = epi::backend::AppOutput::default();
+        let app_output = epi::backend::AppOutput::default();
 
-        let mut _ui_frame = epi::backend::FrameBuilder {
+        let mut _ui_frame = epi::Frame::new(epi::backend::FrameData {
             info: epi::IntegrationInfo {
+                name: "debug_console",
                 web_info: None,
                 cpu_usage: self.previous_frame_time,
-                seconds_since_midnight: None,
                 native_pixels_per_point: Some(state.scale_factor as _),
+                prefer_dark_mode: None,
             },
-            tex_allocator: &mut self.render_pass,
-            output: &mut app_output,
+            output: app_output,
             repaint_signal: self.repaint_signal.clone(),
-        }
-        .build();
+        });
 
         let ctx = self.platform.context();
         ctx.set_visuals(egui::Visuals::light());
@@ -114,7 +113,7 @@ impl Ui {
         ctx.request_repaint();
 
         // End the UI frame. We could now handle the output and draw the UI with the backend.
-        let (_output, paint_commands) = self.platform.end_frame();
+        let (_output, paint_commands) = self.platform.end_frame(None);
         let paint_jobs = ctx.tessellate(paint_commands);
 
         let frame_time = (Instant::now() - egui_start).as_secs_f64() as f32;
@@ -122,24 +121,23 @@ impl Ui {
 
         // Upload all resources for the GPU.
         let screen_descriptor = ScreenDescriptor {
-            physical_width: gpu.swap_chain_desc.width,
-            physical_height: gpu.swap_chain_desc.height,
+            physical_width: gpu.surface_config.width,
+            physical_height: gpu.surface_config.height,
             scale_factor: state.scale_factor as f32,
         };
         self.render_pass
-            .update_texture(&gpu.device, &gpu.queue, &ctx.texture());
+            .update_texture(&gpu.device, &gpu.queue, &ctx.font_image());
         self.render_pass
             .update_user_textures(&gpu.device, &gpu.queue);
         self.render_pass
             .update_buffers(&gpu.device, &gpu.queue, &paint_jobs, &screen_descriptor);
 
         // Record all render passes.
-        self.render_pass.execute(
-            render_encoder,
-            &frame.view,
-            &paint_jobs,
-            &screen_descriptor,
-            None,
-        );
+        let view = frame.texture.create_view(&wgpu::TextureViewDescriptor {
+            label: Some("Surface View (Debug Console)"),
+            ..Default::default()
+        });
+        self.render_pass
+            .execute(render_encoder, &view, &paint_jobs, &screen_descriptor, None).unwrap();
     }
 }

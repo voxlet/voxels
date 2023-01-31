@@ -18,7 +18,7 @@ impl Pipelines {
     pub fn new(
         device: &Arc<wgpu::Device>,
         shaders: &Arc<Mutex<Shaders>>,
-        swap_chain_desc: &wgpu::SwapChainDescriptor,
+        surface_config: &wgpu::SurfaceConfiguration,
     ) -> Self {
         let compute = Arc::new(Mutex::new(Compute::new(device.clone(), shaders.clone())));
 
@@ -29,7 +29,7 @@ impl Pipelines {
 
         Pipelines {
             compute,
-            render: Render::new(&*device, &mut shaders.lock().unwrap(), swap_chain_desc),
+            render: Render::new(&*device, &mut shaders.lock().unwrap(), surface_config),
         }
     }
 }

@@ -50,7 +50,7 @@ pub fn frame_time(ui: &mut Ui, state: &mut State) {
 pub fn voxel_resolution(ui: &mut Ui, state: &mut State, physics: &mut Physics, gpu: &mut Gpu) {
     let voxel_res = state.voxel_resolution;
     ComboBox::from_label("Voxel Resolution")
-        .selected_text(voxel_res as u32)
+        .selected_text(voxel_res.to_string())
         .show_ui(ui, |ui| {
             let mut voxel_res = state.voxel_resolution;
             ui.selectable_value(&mut voxel_res, 64, "64");

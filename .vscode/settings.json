@@ -1,13 +1,6 @@
 {
   "cSpell.words": [
     "Bgra",
-    "Itoh",
-    "Masaru",
-    "Rgba",
-    "Srgb",
-    "Unorm",
-    "Vulkan",
-    "Zeroable",
     "bincode",
     "blit",
     "bytemuck",
@@ -18,25 +11,35 @@
     "fract",
     "hidpi",
     "imgui",
+    "Itoh",
     "linvel",
+    "Masaru",
     "mipmap",
     "mipmaps",
     "msvc",
     "multisample",
     "multisampled",
+    "multiview",
     "nalgebra",
     "oversample",
     "repr",
+    "Rgba",
     "shaderc",
     "simd",
     "simdnoise",
     "spirv",
+    "Srgb",
     "uncaptured",
+    "unclipped",
+    "Unorm",
     "voxel",
     "voxels",
+    "Vulkan",
+    "webgpu",
     "wgpu",
     "wgsl",
-    "winit"
+    "winit",
+    "Zeroable"
   ],
   "editor.formatOnSave": true,
   "editor.formatOnPaste": true,
@@ -44,5 +47,8 @@
   "files.eol": "\n",
   "files.associations": {
     "*.wgsli": "wgsl"
+  },
+  "[rust]": {
+    "editor.defaultFormatter": "matklad.rust-analyzer"
   }
 }

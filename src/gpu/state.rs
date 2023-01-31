@@ -20,16 +20,16 @@ fn concat_slices(slices: &[&[u8]]) -> Vec<u8> {
 // align(16), size(12)
 fn vec3_bytes(v: &[f32; 3]) -> [u8; 16] {
     let mut buf = [0u8; 16];
-    &buf[0..12].copy_from_slice(bytemuck::cast_slice(v));
+    buf[0..12].copy_from_slice(bytemuck::cast_slice(v));
     buf
 }
 
 // align(16), size(48)
 fn mat3x3_bytes(m: &[f32; 9]) -> [u8; 48] {
     let mut buf = [0u8; 48];
-    &buf[0..12].copy_from_slice(bytemuck::cast_slice(&m[0..3]));
-    &buf[16..28].copy_from_slice(bytemuck::cast_slice(&m[3..6]));
-    &buf[32..44].copy_from_slice(bytemuck::cast_slice(&m[6..9]));
+    buf[0..12].copy_from_slice(bytemuck::cast_slice(&m[0..3]));
+    buf[16..28].copy_from_slice(bytemuck::cast_slice(&m[3..6]));
+    buf[32..44].copy_from_slice(bytemuck::cast_slice(&m[6..9]));
     buf
 }
 
@@ -53,7 +53,7 @@ impl Data {
 
 pub fn bind_group_layout_entry(
     binding: u32,
-    visibility: wgpu::ShaderStage,
+    visibility: wgpu::ShaderStages,
 ) -> wgpu::BindGroupLayoutEntry {
     wgpu::BindGroupLayoutEntry {
         binding,
@@ -98,7 +98,7 @@ impl State {
         let uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("State Uniform"),
             contents: bytemuck::cast_slice(&data.bytes()),
-            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
         Self {
