@@ -24,7 +24,53 @@ fn to_color(i: usize, size: usize) -> u8 {
     (i * 256 / size) as u8
 }
 
-fn caves(size: usize) -> Vec<[u8; 4]> {
+pub fn mut_layers(voxels: &mut Vec<[u8; 4]>, size: usize) -> Vec<&mut [[u8; 4]]> {
+    let z_offs = size * size;
+
+    let mut layers: Vec<&mut [[u8; 4]]> = Vec::with_capacity(size);
+    let mut rest = voxels.as_mut_slice();
+    loop {
+        let (head, tail) = rest.split_at_mut(z_offs);
+        layers.push(head);
+        if tail.is_empty() {
+            break;
+        }
+        rest = tail;
+    }
+
+    layers
+}
+
+pub fn layers(voxels: &Vec<[u8; 4]>, size: usize) -> Vec<&[[u8; 4]]> {
+    let z_offs = size * size;
+
+    let mut layers: Vec<&[[u8; 4]]> = Vec::with_capacity(size);
+    let mut rest = voxels.as_slice();
+    loop {
+        let (head, tail) = rest.split_at(z_offs);
+        layers.push(head);
+        if tail.is_empty() {
+            break;
+        }
+        rest = tail;
+    }
+
+    layers
+}
+
+pub fn new_zero_buf(size: usize) -> Vec<[u8; 4]> {
+    let capacity = size * size * size;
+    let layout = std::alloc::Layout::array::<[u8; 4]>(capacity).unwrap();
+    unsafe {
+        Vec::from_raw_parts(
+            std::alloc::alloc_zeroed(layout) as *mut _,
+            capacity,
+            capacity,
+        )
+    }
+}
+
+pub fn caves(size: usize) -> Vec<[u8; 4]> {
     tracing::info!("generating cave noise");
     let noise = simdnoise::NoiseBuilder::fbm_3d(size, size, size)
         .with_seed(42)
@@ -32,66 +78,81 @@ fn caves(size: usize) -> Vec<[u8; 4]> {
         .generate_scaled(0.0, 1.0);
 
     tracing::info!("allocating caves");
-    let mut data: Vec<[u8; 4]>;
-    let capacity = size * size * size;
-    let layout = std::alloc::Layout::array::<[u8; 4]>(capacity).unwrap();
-    unsafe {
-        data = Vec::from_raw_parts(
-            std::alloc::alloc_zeroed(layout) as *mut _,
-            capacity,
-            capacity,
-        );
-    }
+    let mut data: Vec<[u8; 4]> = new_zero_buf(size);
 
-    tracing::info!("slicing caves");
     let y_offs = size;
     let z_offs = size * size;
 
-    let mut slices: Vec<(&mut [[u8; 4]], usize)> = Vec::with_capacity(size);
-    let mut rest = data.as_mut_slice();
-    let mut z = 0;
-    loop {
-        let (head, tail) = rest.split_at_mut(z_offs);
-        slices.push((head, z));
-        if tail.is_empty() {
-            break;
-        }
-        rest = tail;
-        z += 1;
-    }
-
     tracing::info!("digging caves");
-    slices.par_iter_mut().for_each(|(slice, z)| {
-        for y in 0..size {
-            for x in 0..size {
-                let i = x + y * y_offs + *z * z_offs;
-                let n = noise[i];
-                if n > 0.6 {
-                    (*slice)[x + y * y_offs] = [
-                        to_color(*z, size),
-                        to_color(y, size),
-                        to_color(x, size),
-                        255,
-                    ]
+    mut_layers(&mut data, size)
+        .par_iter_mut()
+        .enumerate()
+        .for_each(|(z, slice)| {
+            for y in 0..size {
+                for x in 0..size {
+                    let i = x + y * y_offs + z * z_offs;
+                    let n = noise[i];
+                    if n > 0.6 {
+                        (*slice)[x + y * y_offs] =
+                            [to_color(z, size), to_color(y, size), to_color(x, size), 255]
+                    }
                 }
             }
-        }
-    });
+        });
 
     data
+}
+
+pub fn to_size(voxel_size: f32) -> usize {
+    (1.0 / voxel_size).ceil() as usize
+}
+
+pub fn update_texture(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    shaders: &mut Shaders,
+    texture: &wgpu::Texture,
+    texture_desc: &wgpu::TextureDescriptor,
+    data: &Vec<[u8; 4]>,
+    size: usize,
+) {
+    let extent = wgpu::Extent3d {
+        width: size as u32,
+        height: size as u32,
+        depth_or_array_layers: size as u32,
+    };
+
+    queue.write_texture(
+        wgpu::ImageCopyTexture {
+            texture: &texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+        },
+        bytemuck::cast_slice(&data),
+        wgpu::ImageDataLayout {
+            offset: 0,
+            bytes_per_row: NonZeroU32::new(size_of::<u8>() as u32 * 4 * size as u32),
+            rows_per_image: NonZeroU32::new(size as u32),
+        },
+        extent,
+    );
+
+    mipmap::generate(device, queue, shaders, &texture_desc, &texture);
 }
 
 pub fn create_texture(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     shaders: &mut Shaders,
-    voxel_size: f32,
-) -> (wgpu::TextureView, wgpu::Sampler, wgpu::Sampler) {
-    let size = (1.0 / voxel_size).ceil() as usize;
-
-    //let data = cubic_lattice(SIZE);
-    let data = caves(size);
-
+    data: &Vec<[u8; 4]>,
+    size: usize,
+) -> (
+    wgpu::Texture,
+    wgpu::TextureDescriptor<'static>,
+    wgpu::TextureView,
+    wgpu::Sampler,
+    wgpu::Sampler,
+) {
     let extent = wgpu::Extent3d {
         width: size as u32,
         height: size as u32,
@@ -116,22 +177,7 @@ pub fn create_texture(
         ..wgpu::TextureViewDescriptor::default()
     });
 
-    queue.write_texture(
-        wgpu::ImageCopyTexture {
-            texture: &texture,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-        },
-        bytemuck::cast_slice(&data),
-        wgpu::ImageDataLayout {
-            offset: 0,
-            bytes_per_row: NonZeroU32::new(size_of::<u8>() as u32 * 4 * size as u32),
-            rows_per_image: NonZeroU32::new(size as u32),
-        },
-        extent,
-    );
-
-    mipmap::generate(device, queue, shaders, &texture_desc, &texture);
+    update_texture(device, queue, shaders, &texture, &texture_desc, data, size);
 
     let nearest_descriptor = wgpu::SamplerDescriptor {
         label: Some("Voxel Nearest Sampler"),
@@ -154,7 +200,7 @@ pub fn create_texture(
         ..nearest_descriptor
     });
 
-    (view, nearest_sampler, linear_sampler)
+    (texture, texture_desc, view, nearest_sampler, linear_sampler)
 }
 
 pub fn texture_layout_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {

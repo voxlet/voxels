@@ -1,4 +1,10 @@
-use crate::{gpu::Gpu, state, ui};
+use std::time::Instant;
+
+use crate::{
+    gpu::{voxel, Gpu},
+    physics::Physics,
+    state, ui,
+};
 
 use winit::{
     dpi::PhysicalSize,
@@ -14,24 +20,42 @@ pub fn resize(state: &mut State, gpu: &mut Gpu, size: PhysicalSize<u32>, scale_f
     gpu.resize(size.width, size.height);
 }
 
-pub fn update(state: &mut State, gpu: &mut Gpu) {
+pub fn update(state: &mut State, physics: &mut Physics, gpu: &mut Gpu) {
     let dt = state.update();
+    let now = Instant::now();
+    physics.update(dt);
+    physics.write_voxels(state.voxel_resolution, &mut state.voxels);
+    state.physics_step_time = now.elapsed();
+    gpu.update_voxels(&state.voxels, state.voxel_resolution);
     gpu.update(dt, &state.camera);
 }
 
 pub fn render(
     state: &mut State,
+    physics: &mut Physics,
     gpu: &mut Gpu,
     ui: &mut Option<ui::Ui>,
 ) -> Result<(), wgpu::SwapChainError> {
     let frame = gpu.get_current_frame()?;
     let mut render_encoder = gpu.render(&frame);
     if let Some(ui) = ui {
-        ui.render(&frame, gpu, state, &mut render_encoder);
+        ui.render(&frame, gpu, state, physics, &mut render_encoder);
     };
     gpu.queue.submit(std::iter::once(render_encoder.finish()));
 
     Ok(())
+}
+
+pub fn set_voxel_resolution(
+    state: &mut State,
+    physics: &mut Physics,
+    gpu: &mut Gpu,
+    voxel_resolution: usize,
+) {
+    state.voxel_resolution = voxel_resolution;
+    state.voxels = voxel::caves(voxel_resolution);
+    physics.set_voxels(&state.voxels, voxel_resolution);
+    gpu.set_voxels(&state.voxels, voxel_resolution);
 }
 
 pub async fn run() {
@@ -43,7 +67,14 @@ pub async fn run() {
         .unwrap();
 
     let mut state = State::new(&window);
-    let mut gpu = Gpu::new(&window, &state.camera).await;
+    let mut physics = Physics::new(&state.voxels, state.voxel_resolution);
+    let mut gpu = Gpu::new(
+        &window,
+        &state.voxels,
+        state.voxel_resolution,
+        &state.camera,
+    )
+    .await;
     let mut ui: Option<ui::Ui> = None;
     let repaint_signal = ui::repaint_signal(&event_loop);
 
@@ -88,10 +119,10 @@ pub async fn run() {
                 _ => {}
             },
             Event::RedrawRequested(_) => {
-                update(&mut state, &mut gpu);
+                update(&mut state, &mut physics, &mut gpu);
             }
             Event::RedrawEventsCleared => {
-                match render(&mut state, &mut gpu, &mut ui) {
+                match render(&mut state, &mut physics, &mut gpu, &mut ui) {
                     // Recreate the swap_chain if lost
                     Err(wgpu::SwapChainError::Lost) => {
                         let size = state.size;

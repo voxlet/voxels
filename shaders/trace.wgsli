@@ -1,7 +1,7 @@
 #include "ray.wgsli"
 #include "hit.wgsli"
 
-let light: vec3<f32> = vec3<f32>(0.0, 3.0, 0.0);
+let light: vec3<f32> = vec3<f32>(1.0, 3.0, 1.0);
 let light_size: f32 = 0.2;
 fn direct_light(point: vec3<f32>, normal: vec3<f32>) -> f32 {
     let light_dir = normalize(light - point);

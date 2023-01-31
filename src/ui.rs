@@ -14,7 +14,7 @@ use winit::{
     window::Window,
 };
 
-use crate::{gpu::Gpu, state::State};
+use crate::{gpu::Gpu, physics::Physics, state::State};
 
 pub enum AppEvent {
     RequestRedraw,
@@ -83,6 +83,7 @@ impl Ui {
         frame: &SwapChainTexture,
         gpu: &mut Gpu,
         state: &mut State,
+        physics: &mut Physics,
         render_encoder: &mut wgpu::CommandEncoder,
     ) {
         self.platform
@@ -108,7 +109,7 @@ impl Ui {
         let ctx = self.platform.context();
         ctx.set_visuals(egui::Visuals::light());
 
-        window::ui(&ctx, state, gpu);
+        window::ui(&ctx, state, physics, gpu);
 
         ctx.request_repaint();
 
