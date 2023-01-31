@@ -25,10 +25,24 @@ pub fn frame_time(ui: &mut Ui, state: &mut State) {
         ui.label(format!("{:.2}", state.dt.as_micros() as f32 / 1000.0));
     });
     ui.horizontal(|ui| {
-        ui.label("Physics Time");
+        ui.label("Physics Step Time");
         ui.label(format!(
             "{:.2}",
             state.physics_step_time.as_micros() as f32 / 1000.0
+        ));
+    });
+    ui.horizontal(|ui| {
+        ui.label("Physics Write Time");
+        ui.label(format!(
+            "{:.2}",
+            state.physics_write_time.as_micros() as f32 / 1000.0
+        ));
+    });
+    ui.horizontal(|ui| {
+        ui.label("Voxel Transfer Time");
+        ui.label(format!(
+            "{:.2}",
+            state.voxel_transfer_time.as_micros() as f32 / 1000.0
         ));
     });
 }
