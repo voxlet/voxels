@@ -6,6 +6,11 @@ mod inspector;
 
 fn main() {
     App::new()
+        .insert_resource(WindowDescriptor {
+            width: 960.0,
+            height: 540.0,
+            ..Default::default()
+        })
         .add_plugins(DefaultPlugins)
         .add_plugin(diagnostic::FrameTimeDiagnosticsPlugin::default())
         .add_plugin(diagnostic::LogDiagnosticsPlugin::default())
