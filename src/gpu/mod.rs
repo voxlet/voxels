@@ -1,4 +1,5 @@
 mod pipelines;
+mod shader;
 mod state;
 
 use rayon::prelude::*;
@@ -7,6 +8,8 @@ use std::{mem::size_of, num::NonZeroU32};
 
 use crate::state::camera::Camera;
 pub use pipelines::Pipelines;
+
+use shader::Shaders;
 
 pub struct Gpu {
     surface: wgpu::Surface,
@@ -207,7 +210,8 @@ impl Gpu {
         };
         let swap_chain = device.create_swap_chain(&surface, &swap_chain_desc);
 
-        let pipelines = Pipelines::new(&device, &swap_chain_desc);
+        let shaders = Shaders::new("shaders");
+        let pipelines = Pipelines::new(&device, &shaders, &swap_chain_desc);
 
         Gpu {
             surface,

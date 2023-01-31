@@ -11,6 +11,7 @@
     "bincode",
     "blit",
     "bytemuck",
+    "canonicalize",
     "concat",
     "consts",
     "egui",
@@ -30,5 +31,6 @@
   ],
   "editor.formatOnSave": true,
   "editor.formatOnPaste": true,
-  "editor.formatOnType": true
+  "editor.formatOnType": true,
+  "files.eol": "\n"
 }
