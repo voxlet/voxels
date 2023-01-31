@@ -8,8 +8,6 @@ use bevy_egui::{egui, EguiContext};
 use bevy_inspector_egui::{egui::Ui, WorldInspectorParams};
 use smooth_bevy_cameras::controllers::fps::FpsCameraController;
 
-use crate::GlobalState;
-
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 enum InspectorState {
     Active,
@@ -41,7 +39,7 @@ fn toggle(key: Res<Input<KeyCode>>, mut state: ResMut<State<InspectorState>>) {
 }
 
 fn ui(
-    global_state: Res<GlobalState>,
+    time: Res<Time>,
     state: Res<State<InspectorState>>,
     mut egui_ctx: ResMut<EguiContext>,
     diagnostics: Res<Diagnostics>,
@@ -52,7 +50,7 @@ fn ui(
     egui::Window::new("Inspector")
         .resizable(true)
         .show(egui_ctx.ctx_mut(), |ui| {
-            diagnostics_ui(ui, diagnostics, global_state.start_time)
+            diagnostics_ui(ui, diagnostics, time.startup())
         });
 }
 

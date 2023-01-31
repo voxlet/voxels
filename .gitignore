@@ -1,2 +1,3 @@
 /target
 .cave_cache
+/wgpu_trace

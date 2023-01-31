@@ -7,7 +7,41 @@ default-run = "voxels"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = "0.6"
 smooth-bevy-cameras = "0.2"
 bevy-inspector-egui = "0.8"
 bevy_egui = "0.11"
+
+[dependencies.bevy]
+version = "0.6"
+# Disable the default features if there are any that you do not want
+default-features = false
+features = [
+    # These are the default features:
+    # (keep whichever you like)
+    "render",
+    "bevy_winit",
+    "bevy_gilrs",
+    # "bevy_audio",
+    # "png",
+    # "hdr",
+    # "vorbis",
+    # "x11",
+    "filesystem_watcher",
+    # These are other features that may be of interest:
+    # (add any of these that you need)
+    # "bmp",
+    # "tga",
+    # "dds",
+    # "jpeg",
+    # "wav"
+    # "flac",
+    # "mp3",
+    # "subpixel_glyph_atlas",
+    # "dynamic",
+    # "serialize",
+    "trace",
+    "trace_tracy",
+    # "trace_chrome",
+    # "wgpu_trace",
+    "wayland",
+]
