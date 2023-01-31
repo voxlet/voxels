@@ -47,6 +47,7 @@
     "wgpu",
     "wgsl",
     "winit",
+    "Wireframe",
     "Zeroable"
   ],
   "editor.formatOnSave": true,

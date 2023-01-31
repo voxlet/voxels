@@ -35,8 +35,7 @@ pub fn insert_settings(
     // });
 
     let settings = CaveChunkSettings {
-        size: 655.36,
-        max_subdivisions: 5,
+        size: 0.64,
         threshold: 0.04,
         frequency: 0.15,
         material,
@@ -49,13 +48,12 @@ pub fn insert_settings(
 #[derive(Debug, Clone)]
 pub struct CaveChunkSettings {
     pub size: f32,
-    pub max_subdivisions: u32,
     pub threshold: f32,
     pub frequency: f32,
     pub material: Handle<StandardMaterial>,
 }
 
-#[derive(Bundle, Default)]
+#[derive(Bundle)]
 pub struct CaveChunkBundle {
     #[bundle]
     pub spatial: SpatialBundle,
@@ -74,16 +72,22 @@ impl CaveChunkBundle {
     }
 }
 
-#[derive(Component, Default, Debug, Clone)]
+#[derive(Component, Debug, Clone)]
 pub struct CaveChunk {
     pub subdivisions: u32,
     pub noise_samples: Arc<RwLock<Vec<f32>>>,
+    pub settings: CaveChunkSettings,
 }
 
 impl CaveChunk {
     fn new(settings: &CaveChunkSettings, origin: Vec3, subdivisions: u32) -> Self {
         let sample_count = 2_usize.pow(subdivisions);
         let half_voxel_size = settings.size * 0.5 / sample_count as f32;
+        info!(
+            subdivisions = subdivisions,
+            sample_count = sample_count,
+            voxel_size = half_voxel_size * 2.0
+        );
 
         let (noise_samples, _min, _max) = simdnoise::NoiseBuilder::fbm_3d_offset(
             origin.x * sample_count as f32 / settings.size + half_voxel_size,
@@ -100,6 +104,7 @@ impl CaveChunk {
         CaveChunk {
             subdivisions,
             noise_samples: Arc::new(RwLock::new(noise_samples)),
+            settings: settings.clone(),
         }
     }
 }

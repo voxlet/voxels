@@ -15,6 +15,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         // .add_plugin(diagnostic::FrameTimeDiagnosticsPlugin::default())
         // .add_plugin(diagnostic::LogDiagnosticsPlugin::default())
+        // .add_plugin(WireframePlugin)
         .add_plugin(inspector::InspectorPlugin)
         .add_plugin(camera::CameraPlugin)
         .add_plugin(cave::CavePlugin)
@@ -29,11 +30,11 @@ fn setup(mut commands: Commands) {
         ..default()
     });
     commands.spawn_bundle(PointLightBundle {
-        transform: Transform::from_translation(Vec3::new(0.0, 100.0, 0.0)),
+        transform: Transform::from_translation(Vec3::new(10.0, 30.0, 10.0)),
         point_light: PointLight {
-            intensity: 600000.,
+            intensity: 200000.,
             range: 1000.,
-            shadows_enabled: true,
+            // shadows_enabled: true,
             ..Default::default()
         },
         ..Default::default()
@@ -42,6 +43,6 @@ fn setup(mut commands: Commands) {
     // player
     commands.spawn_bundle(player::PlayerBundle::new(
         Vec3::new(0.0, 0.0, 0.0),
-        Vec3::new(100.0, 0.0, 100.0),
+        Vec3::new(0.0, 0.0, -10.0),
     ));
 }

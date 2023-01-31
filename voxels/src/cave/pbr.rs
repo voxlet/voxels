@@ -1,25 +1,21 @@
 use bevy::prelude::*;
 
-use super::{
-    chunk::{CaveChunk, CaveChunkSettings},
-    mesh::CaveChunkVoxelsMeshedEvent,
-};
+use super::{chunk::CaveChunk, mesh::CaveChunkVoxelsMeshedEvent};
 
 pub fn insert_cave_chunk_pbr(
     mut commands: Commands,
-    settings: Res<CaveChunkSettings>,
     mut events: EventReader<CaveChunkVoxelsMeshedEvent>,
     query: Query<&CaveChunk>,
 ) {
     events.iter().for_each(|ev| {
         if let Ok(cave_chunk) = query.get(ev.entity) {
             let sample_count = 2_u32.pow(cave_chunk.subdivisions);
-            let voxel_size = settings.size / sample_count as f32;
+            let voxel_size = cave_chunk.settings.size / sample_count as f32;
 
             let pbr = commands
                 .spawn_bundle(PbrBundle {
                     mesh: ev.mesh.clone(),
-                    material: settings.material.clone(),
+                    material: cave_chunk.settings.material.clone(),
                     transform: Transform::from_translation(Vec3::splat(-1.0)),
                     ..Default::default()
                 })

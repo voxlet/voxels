@@ -10,7 +10,7 @@ use block_mesh::{
 };
 use futures_lite::future;
 
-use super::chunk::{CaveChunk, CaveChunkSettings};
+use super::chunk::CaveChunk;
 
 pub struct VoxelizeCaveChunkPlugin;
 
@@ -37,7 +37,6 @@ fn detect_added_cave_chunks(
 
 fn voxelize_cave_chunks(
     mut commands: Commands,
-    settings: Res<CaveChunkSettings>,
     mut events: EventReader<CaveChunkNeedsVoxelizingEvent>,
     query: Query<&CaveChunk>,
 ) {
@@ -46,7 +45,6 @@ fn voxelize_cave_chunks(
         if let Ok(cave_chunk) = query.get(ev.entity) {
             commands.spawn().insert(spawn_voxelize_cave_chunk_task(
                 task_pool,
-                settings.clone(),
                 ev.entity,
                 cave_chunk.clone(),
             ));
@@ -59,7 +57,6 @@ struct VoxelizeCaveChunkTask(Task<Option<CaveChunkVoxelizedEvent>>);
 
 fn spawn_voxelize_cave_chunk_task(
     task_pool: &AsyncComputeTaskPool,
-    settings: CaveChunkSettings,
     cave_chunk_entity: Entity,
     cave_chunk: CaveChunk,
 ) -> VoxelizeCaveChunkTask {
@@ -88,7 +85,7 @@ fn spawn_voxelize_cave_chunk_task(
             } else {
                 let noise_index = (x - 1 + (y - 1) * y_stride + (z - 1) * z_stride) as usize;
                 voxels.push(BoolVoxel(
-                    noise_samples[noise_index as usize] > settings.threshold,
+                    noise_samples[noise_index as usize] > cave_chunk.settings.threshold,
                 ))
             }
         }
