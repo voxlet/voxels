@@ -35,5 +35,8 @@
   "editor.formatOnSave": true,
   "editor.formatOnPaste": true,
   "editor.formatOnType": true,
-  "files.eol": "\n"
+  "files.eol": "\n",
+  "files.associations": {
+    "*.wgsli": "wgsl"
+  }
 }

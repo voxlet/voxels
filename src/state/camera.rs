@@ -34,7 +34,7 @@ impl Camera {
             pitch,
             mouse_sensitivity: 0.002,
             active_motions: HashSet::new(),
-            position: glam::vec3(0.5, 0.5, 0.0),
+            position: glam::vec3(0.41, 0.48, 0.02),
             max_velocity: 0.1,
             rotation,
         }

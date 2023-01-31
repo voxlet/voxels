@@ -13,6 +13,12 @@ fn main() {
             Ok(module) => {
                 if let Err(e) = validator.validate(&module) {
                     eprintln!("{}", e);
+                    match e {
+                        naga::valid::ValidationError::Function { error, .. } => {
+                            eprintln!("{}", error);
+                        }
+                        _ => {}
+                    }
                 }
             }
         };
