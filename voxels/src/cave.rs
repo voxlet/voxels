@@ -33,12 +33,12 @@ fn test_spawn(
 ) {
     let task_pool = AsyncComputeTaskPool::get();
 
-    let max_lod = 7;
+    let max_lod = 10;
     // let chunk_size: f32 = 0.64;
     // let subdivisions = 5;
     // let chunk_count = 16;
     let chunk_size: f32 = 1.28;
-    let subdivisions = 6;
+    let subdivisions = 5;
     let chunk_count = 8;
 
     let range = -chunk_count / 2..chunk_count / 2;
