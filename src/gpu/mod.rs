@@ -1,6 +1,7 @@
 mod pipelines;
 mod state;
 
+use rayon::prelude::*;
 use state::State;
 use std::{mem::size_of, num::NonZeroU32};
 
@@ -37,25 +38,62 @@ fn cubic_lattice(size: usize) -> Vec<[u8; 4]> {
     data
 }
 
+fn to_color(i: usize, size: usize) -> u8 {
+    (i * 256 / size) as u8
+}
+
 fn caves(size: usize) -> Vec<[u8; 4]> {
-    tracing::info!("generating caves");
+    tracing::info!("generating cave noise");
     let noise = simdnoise::NoiseBuilder::gradient_3d(size, size, size)
         .with_freq(0.03)
         .generate_scaled(0.0, 1.0);
-    let mut data = vec![[0u8, 0, 0, 0]; size * size * size];
+
+    tracing::info!("allocating caves");
+    let mut data: Vec<[u8; 4]>;
+    let capacity = size * size * size;
+    let layout = std::alloc::Layout::array::<[u8; 4]>(capacity).unwrap();
+    unsafe {
+        data = Vec::from_raw_parts(
+            std::alloc::alloc_zeroed(layout) as *mut _,
+            capacity,
+            capacity,
+        );
+    }
+
+    tracing::info!("slicing caves");
     let y_offs = size;
     let z_offs = size * size;
-    for z in 0..size {
+
+    let mut slices: Vec<(&mut [[u8; 4]], usize)> = Vec::with_capacity(size);
+    let mut rest = data.as_mut_slice();
+    let mut z = 0;
+    loop {
+        let (head, tail) = rest.split_at_mut(z_offs);
+        slices.push((head, z));
+        if tail.is_empty() {
+            break;
+        }
+        rest = tail;
+        z += 1;
+    }
+
+    tracing::info!("digging caves");
+    slices.par_iter_mut().for_each(|(slice, z)| {
         for y in 0..size {
             for x in 0..size {
-                let i = x + y * y_offs + z * z_offs;
+                let i = x + y * y_offs + *z * z_offs;
                 let n = noise[i];
                 if n > 0.6 {
-                    data[i] = [z as u8, y as u8, x as u8, 255];
+                    (*slice)[x + y * y_offs] = [
+                        to_color(*z, size),
+                        to_color(y, size),
+                        to_color(x, size),
+                        255,
+                    ]
                 }
             }
         }
-    }
+    });
 
     data
 }
@@ -64,7 +102,7 @@ fn create_voxel_texture(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
 ) -> (wgpu::TextureView, wgpu::Sampler) {
-    const SIZE: usize = 256;
+    const SIZE: usize = 512;
 
     //let data = cubic_lattice(SIZE);
     let data = caves(SIZE);
