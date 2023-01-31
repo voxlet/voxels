@@ -1,53 +1,68 @@
-use winit::{event::WindowEvent, window::Window};
+pub mod camera;
+
+use winit::event::{DeviceEvent, ElementState, KeyboardInput, VirtualKeyCode};
 
 use crate::gpu;
 
 pub struct State {
     pub size: winit::dpi::PhysicalSize<u32>,
-    clear_color: wgpu::Color,
-    start_time: std::time::Instant,
+    _start_time: std::time::Instant,
     last_update_time: std::time::Instant,
     gpu: gpu::Gpu,
+    camera: camera::Camera,
+}
+
+fn grab_cursor(window: &winit::window::Window, grab: bool) {
+    let _ = window.set_cursor_grab(grab).unwrap();
+    window.set_cursor_visible(!grab);
 }
 
 impl State {
     // Creating some of the wgpu types requires async code
-    pub async fn new(window: &Window) -> Self {
+    pub async fn new(window: &winit::window::Window) -> Self {
+        let _start_time = std::time::Instant::now();
+        let camera = camera::Camera::new();
+        let gpu = gpu::Gpu::new(window, &camera).await;
         Self {
             size: window.inner_size(),
-            clear_color: wgpu::Color::BLACK,
-            start_time: std::time::Instant::now(),
-            last_update_time: std::time::Instant::now(),
-            gpu: gpu::Gpu::new(window).await,
+            _start_time,
+            last_update_time: _start_time,
+            camera,
+            gpu,
         }
     }
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
-        tracing::info!(new_size = ?new_size, "State::resize");
         self.size = new_size;
         self.gpu.resize(new_size.width, new_size.height);
     }
 
-    pub fn input(&mut self, event: &WindowEvent) -> bool {
-        tracing::info!(event = ?event, "State::input");
+    pub fn input(&mut self, window: &winit::window::Window, event: &DeviceEvent) {
         match event {
-            WindowEvent::CursorMoved { position, .. } => {
-                self.clear_color = wgpu::Color {
-                    r: position.x as f64 / self.size.width as f64,
-                    g: position.y as f64 / self.size.height as f64,
-                    b: 1.0,
-                    a: 1.0,
-                };
-                true
+            DeviceEvent::Button {
+                state: ElementState::Released,
+                ..
+            } => {
+                grab_cursor(window, true);
             }
-            _ => false,
-        }
+
+            DeviceEvent::Key(KeyboardInput {
+                state: ElementState::Pressed,
+                virtual_keycode: Some(VirtualKeyCode::Escape),
+                ..
+            }) => {
+                grab_cursor(window, false);
+            }
+
+            _ => self.camera.input(event),
+        };
     }
 
     pub fn update(&mut self) {
         let now = std::time::Instant::now();
         let dt = now - self.last_update_time;
-        self.gpu.update(self.start_time, dt);
+        self.camera.update(dt);
+        self.gpu.update(dt, &self.camera);
         self.last_update_time = now;
     }
 

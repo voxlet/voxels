@@ -4,6 +4,7 @@ mod state;
 use state::State;
 use std::{mem::size_of, num::NonZeroU32};
 
+use crate::state::camera::Camera;
 pub use pipelines::Pipelines;
 
 pub struct Gpu {
@@ -20,36 +21,60 @@ pub struct Gpu {
     pipelines: Pipelines,
 }
 
+#[allow(dead_code)]
+fn cubic_lattice(size: usize) -> Vec<[u8; 4]> {
+    let mut data = vec![[0u8, 0, 0, 0]; size * size * size];
+    let y_offs = size;
+    let z_offs = size * size;
+    let range = (32..size - 32).step_by(8);
+    for z in range.clone() {
+        for y in range.clone() {
+            for x in range.clone() {
+                data[x + y * y_offs + z * z_offs] = [z as u8, y as u8, x as u8, 255];
+            }
+        }
+    }
+    data
+}
+
+fn caves(size: usize) -> Vec<[u8; 4]> {
+    tracing::info!("generating caves");
+    let noise = simdnoise::NoiseBuilder::gradient_3d(size, size, size)
+        .with_freq(0.03)
+        .generate_scaled(0.0, 1.0);
+    let mut data = vec![[0u8, 0, 0, 0]; size * size * size];
+    let y_offs = size;
+    let z_offs = size * size;
+    for z in 0..size {
+        for y in 0..size {
+            for x in 0..size {
+                let i = x + y * y_offs + z * z_offs;
+                let n = noise[i];
+                if n > 0.6 {
+                    data[i] = [z as u8, y as u8, x as u8, 255];
+                }
+            }
+        }
+    }
+
+    data
+}
+
 fn create_voxel_texture(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
 ) -> (wgpu::TextureView, wgpu::Sampler) {
     const SIZE: usize = 256;
+
+    //let data = cubic_lattice(SIZE);
+    let data = caves(SIZE);
+
     let size = wgpu::Extent3d {
         width: SIZE as u32,
         height: SIZE as u32,
         depth_or_array_layers: SIZE as u32,
     };
 
-    let mut data = vec![[0u8, 0, 0, 0]; SIZE * SIZE * SIZE];
-    let y_offs = SIZE;
-    let z_offs = SIZE * SIZE;
-    let range = (32..SIZE - 32).step_by(8);
-    for z in range.clone() {
-        for y in range.clone() {
-            for x in range.clone() {
-                data[x + y * y_offs + z * z_offs] = [z as u8, y as u8, x as u8, 255];
-            }
-        }
-    }
-    let range = (36..SIZE - 36).step_by(8);
-    for z in range.clone() {
-        for y in range.clone() {
-            for x in range.clone() {
-                data[x + y * y_offs + z * z_offs] = [z as u8, y as u8, x as u8, 255];
-            }
-        }
-    }
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("Voxel Texture"),
         size,
@@ -96,7 +121,7 @@ fn pixel_buffer_size(width: u32, height: u32) -> u64 {
 }
 
 impl Gpu {
-    pub async fn new(window: &winit::window::Window) -> Self {
+    pub async fn new(window: &winit::window::Window, camera: &Camera) -> Self {
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
         let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
@@ -123,7 +148,7 @@ impl Gpu {
             .unwrap();
 
         let winit::dpi::PhysicalSize { width, height } = window.inner_size();
-        let state = State::from(&device, width, height);
+        let state = State::from(&device, width, height, camera);
 
         let (voxel_view, voxel_sampler) = create_voxel_texture(&device, &queue);
 
@@ -175,15 +200,8 @@ impl Gpu {
             .create_swap_chain(&self.surface, &self.swap_chain_desc);
     }
 
-    pub fn update(&mut self, start_time: std::time::Instant, _dt: std::time::Duration) {
-        let t = (std::time::Instant::now() - start_time).as_secs_f32() * 0.2;
-        let camera_position = [
-            f32::sin(t) * 0.25 + 0.5,
-            f32::sin(t * 0.9) * 0.25 + 0.5,
-            f32::sin(t * 1.5) * 0.25 + 0.2,
-        ];
-        self.state
-            .update(&self.queue, None, None, Some(camera_position));
+    pub fn update(&mut self, _dt: std::time::Duration, camera: &Camera) {
+        self.state.update(&self.queue, None, None, Some(camera));
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SwapChainError> {

@@ -1,11 +1,45 @@
+use std::mem::size_of;
+
 use wgpu::util::DeviceExt;
 
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+use crate::state::camera::Camera;
+
 pub struct Data {
+    pub camera_rotation: [f32; 9],
     pub camera_position: [f32; 3],
-    _pad: u32,
     resolution: [f32; 2],
+}
+
+fn concat_slices(slices: &[&[u8]]) -> Vec<u8> {
+    let mut vec = Vec::with_capacity(size_of::<Data>());
+    slices.iter().for_each(|slice| vec.extend_from_slice(slice));
+    vec
+}
+
+// align(16), size(12)
+fn vec3_bytes(v: &[f32; 3]) -> [u8; 16] {
+    let mut buf = [0u8; 16];
+    &buf[0..12].copy_from_slice(bytemuck::cast_slice(v));
+    buf
+}
+
+// align(16), size(48)
+fn mat3x3_bytes(m: &[f32; 9]) -> [u8; 48] {
+    let mut buf = [0u8; 48];
+    &buf[0..12].copy_from_slice(bytemuck::cast_slice(&m[0..3]));
+    &buf[16..28].copy_from_slice(bytemuck::cast_slice(&m[3..6]));
+    &buf[32..44].copy_from_slice(bytemuck::cast_slice(&m[6..9]));
+    buf
+}
+
+impl Data {
+    fn bytes(&self) -> Vec<u8> {
+        concat_slices(&[
+            &mat3x3_bytes(&self.camera_rotation),
+            &vec3_bytes(&self.camera_position),
+            bytemuck::bytes_of(&self.resolution),
+        ])
+    }
 }
 
 pub fn bind_group_layout_entry(
@@ -32,15 +66,20 @@ pub struct State {
 }
 
 impl State {
-    pub fn from(device: &wgpu::Device, render_width: u32, render_height: u32) -> Self {
+    pub fn from(
+        device: &wgpu::Device,
+        render_width: u32,
+        render_height: u32,
+        camera: &Camera,
+    ) -> Self {
         let data = Data {
+            camera_rotation: camera.rotation.to_cols_array(),
+            camera_position: camera.position.into(),
             resolution: [render_width as f32, render_height as f32],
-            _pad: 0,
-            camera_position: [0.0, 0.5, 0.0],
         };
         let uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Resolution Uniform Descriptor"),
-            contents: bytemuck::cast_slice(&[data]),
+            contents: bytemuck::cast_slice(&data.bytes()),
             usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
         });
 
@@ -64,7 +103,7 @@ impl State {
         queue: &wgpu::Queue,
         render_width: Option<u32>,
         render_height: Option<u32>,
-        camera_position: Option<[f32; 3]>,
+        camera: Option<&Camera>,
     ) {
         if let Some(w) = render_width {
             self.render_width = w;
@@ -74,10 +113,11 @@ impl State {
             self.render_height = h;
             self.data.resolution[1] = h as f32;
         }
-        if let Some(cp) = camera_position {
-            self.data.camera_position = cp;
+        if let Some(c) = camera {
+            self.data.camera_rotation = c.rotation.to_cols_array();
+            self.data.camera_position = c.position.into();
         }
 
-        queue.write_buffer(&self.uniform, 0, bytemuck::cast_slice(&[self.data]));
+        queue.write_buffer(&self.uniform, 0, bytemuck::cast_slice(&self.data.bytes()));
     }
 }
