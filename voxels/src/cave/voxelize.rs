@@ -43,11 +43,13 @@ fn voxelize_cave_chunks(
     let task_pool = AsyncComputeTaskPool::get();
     events.iter().for_each(|ev| {
         if let Ok(cave_chunk) = query.get(ev.entity) {
-            commands.spawn_empty().insert(spawn_voxelize_cave_chunk_task(
-                task_pool,
-                ev.entity,
-                cave_chunk.clone(),
-            ));
+            commands
+                .spawn_empty()
+                .insert(spawn_voxelize_cave_chunk_task(
+                    task_pool,
+                    ev.entity,
+                    cave_chunk.clone(),
+                ));
         }
     })
 }
@@ -85,7 +87,7 @@ fn spawn_voxelize_cave_chunk_task(
                 voxels.push(BoolVoxel(false));
             } else {
                 let noise_index = (x - 1 + (y - 1) * y_stride + (z - 1) * z_stride) as usize;
-                let value = noise_samples[noise_index as usize] > cave_chunk.settings.threshold;
+                let value = noise_samples[noise_index] > cave_chunk.settings.threshold;
                 empty = empty && !value;
                 voxels.push(BoolVoxel(value))
             }
