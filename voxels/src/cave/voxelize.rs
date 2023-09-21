@@ -17,13 +17,14 @@ pub struct VoxelizeCaveChunkPlugin;
 impl Plugin for VoxelizeCaveChunkPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<CaveChunkNeedsVoxelizingEvent>();
-        app.add_system(detect_added_cave_chunks);
-        app.add_system(voxelize_cave_chunks);
+        app.add_systems(Update, detect_added_cave_chunks);
+        app.add_systems(Update, voxelize_cave_chunks);
         app.add_event::<CaveChunkVoxelizedEvent>();
-        app.add_system(handle_voxelize_cave_chunk_tasks);
+        app.add_systems(Update, handle_voxelize_cave_chunk_tasks);
     }
 }
 
+#[derive(Event)]
 struct CaveChunkNeedsVoxelizingEvent {
     entity: Entity,
 }
@@ -107,6 +108,7 @@ fn spawn_voxelize_cave_chunk_task(
     }))
 }
 
+#[derive(Event)]
 pub struct CaveChunkVoxelizedEvent {
     pub entity: Entity,
     pub voxels: CaveChunkVoxels,

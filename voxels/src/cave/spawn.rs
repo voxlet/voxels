@@ -9,7 +9,7 @@ pub struct CaveSpawnPlugin;
 impl Plugin for CaveSpawnPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(SpawnedCaveChunks::default());
-        app.add_system(handle_spawn_cave_chunk_tasks);
+        app.add_systems(Update, handle_spawn_cave_chunk_tasks);
     }
 }
 

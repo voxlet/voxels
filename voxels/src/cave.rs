@@ -16,13 +16,14 @@ pub struct CavePlugin;
 
 impl Plugin for CavePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(chunk::CaveChunkPlugin)
-            .add_plugin(spawn::CaveSpawnPlugin)
-            .add_plugin(voxelize::VoxelizeCaveChunkPlugin)
-            .add_plugin(mesh::MeshCaveChunkPlugin)
-            .add_system(pbr::insert_cave_chunk_pbr)
-            .add_system(spawn_around_player)
-            .add_startup_system(test_spawn);
+        app.add_plugins((
+            chunk::CaveChunkPlugin,
+            spawn::CaveSpawnPlugin,
+            voxelize::VoxelizeCaveChunkPlugin,
+            mesh::MeshCaveChunkPlugin,
+        ))
+        .add_systems(Update, (pbr::insert_cave_chunk_pbr, spawn_around_player))
+        .add_systems(Startup, test_spawn.after(chunk::insert_settings));
     }
 }
 

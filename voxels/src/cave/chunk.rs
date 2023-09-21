@@ -6,14 +6,8 @@ pub struct CaveChunkPlugin;
 
 impl Plugin for CaveChunkPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<ReadyEvent>();
-        app.add_startup_system(insert_settings);
+        app.add_systems(Startup, insert_settings);
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct ReadyEvent {
-    pub settings: CaveChunkSettings,
 }
 
 pub fn insert_settings(world: &mut World) {
@@ -41,8 +35,6 @@ pub fn insert_settings(world: &mut World) {
         material,
     };
     world.insert_resource(settings);
-
-    // ready_event.send(ReadyEvent { settings });
 }
 
 #[derive(Resource, Debug, Clone)]

@@ -8,20 +8,21 @@ mod player;
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
-            window: WindowDescriptor {
-                width: 960.0,
-                height: 540.0,
+            primary_window: Some(Window {
+                resolution: (960.0, 540.0).into(),
                 ..default()
-            },
+            }),
             ..default()
         }))
-        .add_plugin(diagnostic::FrameTimeDiagnosticsPlugin::default())
+        .add_plugins(diagnostic::FrameTimeDiagnosticsPlugin)
         // .add_plugin(diagnostic::LogDiagnosticsPlugin::default())
         // .add_plugin(WireframePlugin)
-        .add_plugin(inspector::InspectorPlugin)
-        .add_plugin(camera::CameraPlugin)
-        .add_plugin(cave::CavePlugin)
-        .add_startup_system(setup)
+        .add_plugins((
+            inspector::InspectorPlugin,
+            camera::CameraPlugin,
+            cave::CavePlugin,
+        ))
+        .add_systems(Startup, setup)
         .run();
 }
 

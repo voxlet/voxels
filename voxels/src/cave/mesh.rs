@@ -15,9 +15,9 @@ pub struct MeshCaveChunkPlugin;
 
 impl Plugin for MeshCaveChunkPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(mesh_cave_chunk_voxels);
+        app.add_systems(Update, mesh_cave_chunk_voxels);
         app.add_event::<CaveChunkVoxelsMeshedEvent>();
-        app.add_system(handle_mesh_cave_chunk_voxels_tasks);
+        app.add_systems(Update, handle_mesh_cave_chunk_voxels_tasks);
     }
 }
 
@@ -105,6 +105,7 @@ fn spawn_mesh_cave_chunk_voxels_task(
     }))
 }
 
+#[derive(Event)]
 pub struct CaveChunkVoxelsMeshedEvent {
     pub entity: Entity,
     // pub voxels: CaveChunkVoxels,

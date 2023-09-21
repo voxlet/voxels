@@ -1,7 +1,6 @@
 use std::f32::consts::PI;
 
 use bevy::{input::mouse::MouseMotion, math::Vec2Swizzles, prelude::*};
-use bevy_inspector_egui::Inspectable;
 
 pub struct CameraPlugin;
 
@@ -14,12 +13,12 @@ impl Plugin for CameraPlugin {
                 sprint_factor: 10.0,
             })
             .add_event::<CameraControlEvent>()
-            .add_system(input)
-            .add_system(control);
+            .add_systems(Update, input)
+            .add_systems(Update, control);
     }
 }
 
-#[derive(Resource, Reflect, Inspectable, Debug, Default)]
+#[derive(Resource, Reflect, Debug, Default)]
 pub struct CameraControlSettings {
     pub rotate_sensitivity: f32,
     pub move_speed: f32,
@@ -49,6 +48,7 @@ impl CameraBundle {
 #[derive(Component, Reflect, Debug)]
 struct CameraController {}
 
+#[derive(Event)]
 pub struct CameraControlEvent {
     pub delta_rotation: Vec2,
     pub delta_translation: Vec3,
@@ -70,14 +70,14 @@ fn input(
             KeyCode::A => -Vec3::X,
             KeyCode::S => Vec3::Z,
             KeyCode::D => Vec3::X,
-            KeyCode::LControl => -Vec3::Y,
+            KeyCode::ControlLeft => -Vec3::Y,
             KeyCode::Space => Vec3::Y,
             _ => Vec3::ZERO,
         }
     });
     if delta_translation != Vec3::ZERO {
         delta_translation = delta_translation.normalize()
-            * if keys.pressed(KeyCode::LShift) {
+            * if keys.pressed(KeyCode::ShiftLeft) {
                 settings.move_speed * settings.sprint_factor
             } else {
                 settings.move_speed
